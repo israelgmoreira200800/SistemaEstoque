@@ -1,0 +1,40 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Local configuration and secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Tests and reports
+/coverage
+/playwright-report
+/test-results
+
+# Prisma generated client
+/src/generated/prisma
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+pnpm-debug.log*
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo

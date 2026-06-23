@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: estoque_test
+          POSTGRES_USER: estoque
+          POSTGRES_PASSWORD: estoque
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U estoque -d estoque_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://estoque:estoque@localhost:5432/estoque_test?schema=public
+      SESSION_COOKIE_NAME: estoque_session
+      SESSION_TTL_DAYS: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm db:deploy
+      - run: pnpm quality
+      - run: pnpm build
+

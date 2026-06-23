@@ -1,0 +1,127 @@
+import { prisma } from "@/lib/prisma";
+import { isWholeQuantity, toNumber } from "@/lib/stock/quantity";
+import type { StockMovementType } from "@/generated/prisma/enums";
+import type { Prisma } from "@/generated/prisma/client";
+
+type StockMovementInput = {
+  companyId: string;
+  userId: string;
+  itemId: string;
+  quantity: string;
+  type: StockMovementType;
+  documentNumber?: string;
+  note?: string;
+  sourceType?: string;
+  sourceId?: string;
+  metadata?: Prisma.InputJsonValue;
+};
+
+export async function registerStockIncrease(input: StockMovementInput) {
+  const item = await prisma.item.findFirst({
+    where: { id: input.itemId, companyId: input.companyId, status: "ACTIVE" },
+    include: { unit: true },
+  });
+  if (!item) return { error: "Item não encontrado ou inativo." };
+  if (!item.unit.allowsFraction && !isWholeQuantity(input.quantity)) {
+    return { error: "A unidade deste item não permite quantidade fracionada." };
+  }
+
+  const movement = await prisma.$transaction(async (tx) => {
+    const balance = await tx.stockBalance.upsert({
+      where: { companyId_itemId: { companyId: input.companyId, itemId: input.itemId } },
+      update: { quantityOnHand: { increment: input.quantity } },
+      create: {
+        companyId: input.companyId,
+        itemId: input.itemId,
+        quantityOnHand: input.quantity,
+      },
+    });
+
+    const created = await tx.stockMovement.create({
+      data: {
+        companyId: input.companyId,
+        itemId: input.itemId,
+        type: input.type,
+        quantity: input.quantity,
+        balanceAfter: balance.quantityOnHand,
+        documentNumber: input.documentNumber,
+        note: input.note,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        createdByUserId: input.userId,
+        metadata: input.metadata,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        companyId: input.companyId,
+        userId: input.userId,
+        action: "stock.increased",
+        entityType: "stock_movement",
+        entityId: created.id,
+        metadata: { itemId: input.itemId, quantity: input.quantity, type: input.type },
+      },
+    });
+
+    return created;
+  });
+
+  return { movement };
+}
+
+export async function registerStockDecrease(input: StockMovementInput) {
+  const item = await prisma.item.findFirst({
+    where: { id: input.itemId, companyId: input.companyId, status: "ACTIVE" },
+    include: { unit: true },
+  });
+  if (!item) return { error: "Item não encontrado ou inativo." };
+  if (!item.unit.allowsFraction && !isWholeQuantity(input.quantity)) {
+    return { error: "A unidade deste item não permite quantidade fracionada." };
+  }
+
+  const currentBalance = await prisma.stockBalance.findUnique({
+    where: { companyId_itemId: { companyId: input.companyId, itemId: input.itemId } },
+  });
+  if (!currentBalance || toNumber(currentBalance.quantityOnHand) < toNumber(input.quantity)) {
+    return { error: "Estoque insuficiente para esta saída." };
+  }
+
+  const movement = await prisma.$transaction(async (tx) => {
+    const balance = await tx.stockBalance.update({
+      where: { companyId_itemId: { companyId: input.companyId, itemId: input.itemId } },
+      data: { quantityOnHand: { decrement: input.quantity } },
+    });
+
+    const created = await tx.stockMovement.create({
+      data: {
+        companyId: input.companyId,
+        itemId: input.itemId,
+        type: input.type,
+        quantity: input.quantity,
+        balanceAfter: balance.quantityOnHand,
+        documentNumber: input.documentNumber,
+        note: input.note,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        createdByUserId: input.userId,
+        metadata: input.metadata,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        companyId: input.companyId,
+        userId: input.userId,
+        action: "stock.decreased",
+        entityType: "stock_movement",
+        entityId: created.id,
+        metadata: { itemId: input.itemId, quantity: input.quantity, type: input.type },
+      },
+    });
+
+    return created;
+  });
+
+  return { movement };
+}
