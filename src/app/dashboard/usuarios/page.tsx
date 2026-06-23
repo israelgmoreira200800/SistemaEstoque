@@ -51,57 +51,70 @@ export default async function UsersPage() {
   }));
   const sectorModels = sectors.map((sector) => ({ id: sector.id, name: sector.name, status: sector.status }));
   const permissionOptions = PERMISSIONS.map((permission) => ({ key: permission.key, name: permission.name }));
+  const activeUsers = users.filter((user) => user.status === "ACTIVE").length;
+  const blockedUsers = users.length - activeUsers;
+  const activeRoles = roles.filter((role) => role.status === "ACTIVE").length;
 
   return (
     <>
-      <PageHeader title="Usuários e permissões" subtitle="Gerencie usuários, cargos, permissões individuais e setores." />
-      <main className="page-body">
+      <PageHeader title="Usuários e permissões" subtitle="Controle fino de acessos, cargos e setores da operação." />
+      <main className="page-body access-page">
+        <section className="access-overview" aria-label="Resumo de acessos">
+          <article><span>Usuários ativos</span><strong>{activeUsers}</strong><small>{blockedUsers} bloqueado{blockedUsers === 1 ? "" : "s"}</small></article>
+          <article><span>Cargos ativos</span><strong>{activeRoles}</strong><small>{roles.length} cargo{roles.length === 1 ? "" : "s"} cadastrados</small></article>
+          <article><span>Setores</span><strong>{sectors.length}</strong><small>vínculos operacionais</small></article>
+        </section>
+
         {session.permissions.has("user.create") && (
-          <section className="content-card catalog-card">
+          <section className="content-card catalog-card access-create-card">
             <div className="card-heading"><div><span className="eyebrow"><Users size={14} /> Novo usuário</span><h3>Criar acesso</h3></div></div>
             <CreateUserForm roles={roleModels} sectors={sectorModels} />
           </section>
         )}
 
-        <section className="content-card catalog-card item-create-card">
-          <div className="card-heading"><div><span className="eyebrow"><Users size={14} /> Usuários</span><h3>{users.length} usuário{users.length === 1 ? "" : "s"}</h3></div></div>
-          <div className="access-list">
-            {users.map((user) => (
-              <UserAccessCard
-                key={user.id}
-                user={{
-                  id: user.id,
-                  name: user.name,
-                  email: user.email,
-                  status: user.status,
-                  roleIds: user.roles.map(({ roleId }) => roleId),
-                  sectorIds: user.sectors.map(({ sectorId }) => sectorId),
-                  overrides: user.permissionOverrides.map((override) => ({ permissionKey: override.permission.key, effect: override.effect })),
-                }}
-                roles={roleModels}
-                sectors={sectorModels}
-                permissionKeys={permissionOptions}
-              />
-            ))}
-          </div>
-          {!canManageUsers && <p className="table-note"><KeyRound size={15} /> Você pode visualizar usuários, mas não alterar acessos.</p>}
-        </section>
+        <div className="access-layout">
+          <section className="content-card catalog-card access-main-card">
+            <div className="card-heading"><div><span className="eyebrow"><Users size={14} /> Usuários</span><h3>{users.length} usuário{users.length === 1 ? "" : "s"}</h3></div></div>
+            <div className="access-list">
+              {users.map((user) => (
+                <UserAccessCard
+                  key={user.id}
+                  user={{
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    status: user.status,
+                    roleIds: user.roles.map(({ roleId }) => roleId),
+                    sectorIds: user.sectors.map(({ sectorId }) => sectorId),
+                    overrides: user.permissionOverrides.map((override) => ({ permissionKey: override.permission.key, effect: override.effect })),
+                  }}
+                  roles={roleModels}
+                  sectors={sectorModels}
+                  permissionKeys={permissionOptions}
+                />
+              ))}
+            </div>
+            {!canManageUsers && <p className="table-note"><KeyRound size={15} /> Você pode visualizar usuários, mas não alterar acessos.</p>}
+          </section>
+
+          <aside className="access-side-stack">
+            {session.permissions.has("user.update") && (
+              <section className="content-card catalog-card access-side-card">
+                <div className="card-heading"><div><span className="eyebrow">Setores operacionais</span><h3>{sectors.length} setor{sectors.length === 1 ? "" : "es"}</h3></div></div>
+                <CreateSectorForm />
+                <div className="tag-list">{sectors.map((sector) => <span className="status-badge" key={sector.id}><span />{sector.name}</span>)}</div>
+              </section>
+            )}
+          </aside>
+        </div>
 
         {canManageRoles && (
-          <section className="content-card catalog-card item-create-card">
-            <div className="card-heading"><div><span className="eyebrow"><ShieldCheck size={14} /> Cargos</span><h3>{roles.length} cargo{roles.length === 1 ? "" : "s"}</h3></div></div>
+          <section className="content-card catalog-card access-main-card">
+            <div className="card-heading"><div><span className="eyebrow"><ShieldCheck size={14} /> Cargos e permissões</span><h3>{roles.length} cargo{roles.length === 1 ? "" : "s"}</h3></div></div>
             {session.permissions.has("role.create") && session.permissions.has("permission.manage") && <CreateRoleForm groups={groups} />}
-            <div className="access-list">
+            <div className="access-list role-list">
               {roleModels.map((role) => <RoleCard key={role.id} role={role} groups={groups} canManage={session.permissions.has("permission.manage")} />)}
             </div>
-          </section>
-        )}
-
-        {session.permissions.has("user.update") && (
-          <section className="content-card catalog-card item-create-card">
-            <div className="card-heading"><div><span className="eyebrow">Setores operacionais</span><h3>{sectors.length} setor{sectors.length === 1 ? "" : "es"}</h3></div></div>
-            <CreateSectorForm />
-            <div className="tag-list">{sectors.map((sector) => <span className="status-badge" key={sector.id}><span />{sector.name}</span>)}</div>
           </section>
         )}
       </main>

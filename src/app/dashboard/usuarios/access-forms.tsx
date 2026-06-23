@@ -50,10 +50,19 @@ function Feedback({ state }: { state: AccessActionState }) {
   return null;
 }
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
 export function CreateUserForm({ roles, sectors }: { roles: Role[]; sectors: Sector[] }) {
   const [state, action, pending] = useActionState(createUserAction, initialState);
   return (
-    <form action={action} className="item-form">
+    <form action={action} className="item-form access-create-form">
       <div className="form-row four-columns">
         <label>Nome<input name="name" required /></label>
         <label>E-mail<input name="email" type="email" required /></label>
@@ -70,7 +79,7 @@ export function CreateUserForm({ roles, sectors }: { roles: Role[]; sectors: Sec
 export function CreateRoleForm({ groups }: { groups: PermissionGroup[] }) {
   const [state, action, pending] = useActionState(createRoleAction, initialState);
   return (
-    <form action={action} className="item-form">
+    <form action={action} className="item-form access-create-form">
       <div className="form-row">
         <label>Nome do cargo<input name="name" required /></label>
         <label>Descrição<input name="description" /></label>
@@ -88,14 +97,14 @@ export function RoleCard({ role, groups, canManage }: { role: Role; groups: Perm
   const [inactiveState, inactiveAction, inactivating] = useActionState(inactivateRoleAction, initialState);
 
   return (
-    <details className="role-card">
+    <details className="role-card access-role-card">
       <summary>
         <span><strong>{role.name}</strong><small>{role.description ?? "Sem descrição"} · {role.permissionKeys.length} permissões</small></span>
         <span className={`status-badge ${role.status === "INACTIVE" ? "status-inactive" : ""}`}><span />{role.status === "ACTIVE" ? "Ativo" : "Inativo"}</span>
       </summary>
       {!canManage && <PermissionChecklist groups={groups} selected={role.permissionKeys} disabled />}
       {canManage && (
-      <>
+      <div className="access-detail-body">
       <form action={updateAction} className="item-form">
         <input type="hidden" name="id" value={role.id} />
         <div className="form-row">
@@ -118,7 +127,7 @@ export function RoleCard({ role, groups, canManage }: { role: Role; groups: Perm
           <Feedback state={inactiveState} />
         </form>
       </div>
-      </>
+      </div>
       )}
     </details>
   );
@@ -150,11 +159,19 @@ export function UserAccessCard({ user, roles, sectors, permissionKeys }: { user:
   const [overrideState, overrideAction, overriding] = useActionState(setUserPermissionOverrideAction, initialState);
 
   return (
-    <details className="role-card">
+    <details className="role-card user-access-card">
       <summary>
-        <span><strong>{user.name}</strong><small>{user.email}</small></span>
-        <span className={`status-badge ${user.status === "BLOCKED" ? "status-inactive" : ""}`}><span />{user.status === "ACTIVE" ? "Ativo" : "Bloqueado"}</span>
+        <span className="user-summary">
+          <span className="user-summary-avatar">{initials(user.name)}</span>
+          <span className="access-summary-copy"><strong>{user.name}</strong><small>{user.email}</small></span>
+        </span>
+        <span className="access-summary-meta">
+          <span>{user.roleIds.length} cargo{user.roleIds.length === 1 ? "" : "s"}</span>
+          <span>{user.sectorIds.length} setor{user.sectorIds.length === 1 ? "" : "es"}</span>
+          <span className={`status-badge ${user.status === "BLOCKED" ? "status-inactive" : ""}`}><span />{user.status === "ACTIVE" ? "Ativo" : "Bloqueado"}</span>
+        </span>
       </summary>
+      <div className="access-detail-body">
       <div className="access-grid">
         <form action={roleAction} className="compact-form">
           <input type="hidden" name="userId" value={user.id} />
@@ -194,6 +211,7 @@ export function UserAccessCard({ user, roles, sectors, permissionKeys }: { user:
         <button className="secondary-button" disabled={toggling}>{toggling ? "Aguarde…" : user.status === "ACTIVE" ? "Bloquear" : "Desbloquear"}</button>
         <Feedback state={statusState} />
       </form>
+      </div>
     </details>
   );
 }

@@ -72,13 +72,18 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={`Olá, ${firstName}`} subtitle="Acompanhe estoque, produção, pedidos e acessos." />
+      <PageHeader title={`Olá, ${firstName}`} subtitle="Painel de comando da operação." />
       <main className="page-body">
         <section className="welcome-banner">
           <div>
-            <span className="eyebrow"><Boxes size={14} /> Visão geral</span>
-            <h2>Seu estoque em uma tela simples.</h2>
-            <p>Use os atalhos para cadastrar itens, movimentar estoque, produzir e criar pedidos.</p>
+            <span className="eyebrow"><Boxes size={14} /> Central operacional</span>
+            <h2>Decisões de estoque com contexto, rastro e velocidade.</h2>
+            <p>Monitore movimentações, produção, pedidos e acessos sem perder o vínculo entre saldo e ação.</p>
+          </div>
+          <div className="banner-telemetry" aria-hidden="true">
+            <span>Saldo</span>
+            <strong>{balances.length}</strong>
+            <small>itens monitorados</small>
           </div>
         </section>
 

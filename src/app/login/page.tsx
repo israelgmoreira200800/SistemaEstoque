@@ -1,4 +1,5 @@
-import { Boxes, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
+import Image from "next/image";
+import { CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { LoginForm } from "./login-form";
@@ -10,13 +11,13 @@ export default async function LoginPage() {
     <main className="login-shell">
       <section className="login-story" aria-label="Apresentação do produto">
         <div className="brand-lockup brand-lockup-light">
-          <span className="brand-mark"><Boxes aria-hidden="true" size={24} /></span>
-          <span>Vértice</span>
+          <span className="brand-mark"><Image src="/brand/vertice-app-icon.png" alt="" width={40} height={40} priority /></span>
+          <span>Vertice</span>
         </div>
 
         <div className="story-content">
-          <div className="eyebrow eyebrow-light"><Sparkles size={14} /> Operação em um só lugar</div>
-          <h1>Estoque claro.<br />Produção no ritmo.</h1>
+          <div className="eyebrow eyebrow-light"><Sparkles size={14} /> Torre de controle operacional</div>
+          <h1>Controle preciso para estoque, pedidos e produção.</h1>
           <p>
             Do recebimento à expedição, acompanhe cada movimento com segurança,
             rastreabilidade e decisões melhores.
@@ -29,19 +30,18 @@ export default async function LoginPage() {
           </ul>
         </div>
 
-        <p className="story-footnote">Gestão que acompanha a realidade da sua operação.</p>
+        <p className="story-footnote">Rastreabilidade, permissões e saldo real sem planilhas paralelas.</p>
       </section>
 
       <section className="login-panel">
         <div className="login-card">
           <div className="mobile-brand brand-lockup">
-            <span className="brand-mark"><Boxes aria-hidden="true" size={22} /></span>
-            <span>Vértice</span>
+            <Image className="brand-horizontal-image" src="/brand/vertice-logo-horizontal.png" alt="Vertice" width={360} height={119} priority />
           </div>
           <div className="login-heading">
             <span className="security-chip"><ShieldCheck size={15} /> Acesso seguro</span>
-            <h2>Boas-vindas</h2>
-            <p>Use suas credenciais para acessar sua empresa.</p>
+            <h2>Entrar no painel</h2>
+            <p>Acesse a operação com sua sessão protegida.</p>
           </div>
           <LoginForm />
           <p className="login-support">Problemas para entrar? Fale com o administrador da sua empresa.</p>
