@@ -1,11 +1,14 @@
 # Sistema de Controle de Estoque e Produção
 
-Sistema web para uso dentro de uma única empresa, com controle de itens, entradas,
-saídas, produção, pedidos, histórico, usuários, cargos e permissões granulares.
+O Vertice e um sistema web de estoque, pedidos e producao em transformacao para
+SaaS multiempresa. Cada cliente representa uma empresa independente, sem filiais
+no escopo atual, com estoque principal unico e organizacao interna por usuarios,
+setores, cargos e permissoes.
 
-O MVP evita filial, regional e multiempresa na experiência do usuário. Por baixo,
-existe uma tabela `companies` apenas como raiz da instalação e escopo interno de
-dados/auditoria.
+O ambiente empresarial atual segue operacional. A base SaaS ja possui status de
+empresa, trial, plano manual, assinaturas, limites, operadores da plataforma,
+auditoria da plataforma, login separado em `/platform/login`, painel minimo em
+`/platform` e onboarding transacional de empresas clientes.
 
 ## Estado atual
 
@@ -23,6 +26,13 @@ Implementado:
 - permissões individuais por usuário com concessão ou negação;
 - auditoria para login, estoque, pedidos, produção, usuários, cargos e permissões;
 - proteção de backend em Server Actions e rotas;
+- preparacao do dominio SaaS com empresas, planos manuais, assinaturas, limites
+  e entidades de operadores da plataforma;
+- autenticacao separada da plataforma com cookie, sessao e auditoria proprios;
+- painel minimo da plataforma com visao geral, listagem, onboarding e ciclo de
+  vida das empresas;
+- criacao transacional de tenant, primeiro administrador, cargos padrao,
+  setores, catalogo inicial, plano, assinatura, limites e auditoria;
 - migration versionada e seed idempotente.
 
 ## Executar localmente
@@ -112,4 +122,3 @@ Usuários → Cargos → Permissões do cargo → Overrides individuais → Audi
 6. Toda alteração relevante gera auditoria.
 7. Toda movimentação de estoque atualiza saldo e cria histórico.
 8. Produção consome componentes e gera produto acabado na mesma transação.
-

@@ -7,6 +7,10 @@ armazenam, transformam, montam, reservam, expedem ou comercializam itens. A
 fábrica de slime é somente um cenário de validação; o domínio deve funcionar sem
 customização obrigatória para outros segmentos.
 
+Cada cliente representa uma empresa independente no SaaS. Nao existem filiais no
+escopo atual; cada empresa possui um estoque principal, e a organizacao interna
+ocorre por usuarios, setores, cargos e permissoes.
+
 ## Problemas resolvidos
 
 - Divergência entre saldo físico, reservado e disponível.
@@ -18,7 +22,7 @@ customização obrigatória para outros segmentos.
 ## Escopo do MVP
 
 - Autenticação e recuperação de acesso.
-- Empresas, filiais, depósitos e setores.
+- Empresas independentes, setores internos e estoque principal unico.
 - Usuários, cargos e permissões configuráveis.
 - Itens, categorias, unidades de medida e conversões.
 - Clientes e fornecedores.
@@ -34,7 +38,8 @@ customização obrigatória para outros segmentos.
 - Aplicativo móvel nativo.
 - Previsões avançadas com inteligência artificial.
 - Integrações obrigatórias com marketplaces ou ERPs.
-- Planos, cobrança recorrente e painel administrativo SaaS.
+- Cobrança recorrente real e integração com meios de pagamento.
+- Acesso de suporte aos dados dos clientes.
 
 ## Perfis iniciais
 
@@ -145,4 +150,3 @@ auditáveis.
 - Perdas e ajustes registram motivo, usuário e auditoria.
 - Dashboards usam dados reais e filtros funcionais.
 - Regras críticas possuem testes automatizados.
-

@@ -649,6 +649,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .catalog-table .table-row { grid-template-columns: 1.4fr .8fr .8fr .5fr .45fr; }
 .catalog-search { display: flex; width: min(330px, 45vw); align-items: center; gap: 7px; padding: 5px 6px 5px 10px; border: 1px solid var(--line); border-radius: 10px; color: #89939b; background: #f8f9fa; }
 .catalog-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; font-size: 11px; }
+.catalog-search select { min-height: 30px; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 11px; }
 .text-button { padding: 5px 8px; border: 0; border-radius: 7px; color: var(--brand); background: transparent; font-size: 10px; font-weight: 750; cursor: pointer; }
 .text-button:hover:not(:disabled) { background: var(--brand-soft); }
 .text-button:disabled { cursor: wait; opacity: .55; }
@@ -749,6 +750,32 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .danger-text { color: var(--danger); }
 .danger-text:hover:not(:disabled) { color: #821b12; background: #fff1ef; }
 .three-small-buttons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.platform-company-table .table-row { grid-template-columns: 1.25fr .55fr .7fr 1.15fr .55fr .45fr; }
+.platform-home-table .table-row { grid-template-columns: 1.1fr .55fr .75fr .9fr; }
+.platform-audit-table .table-row { grid-template-columns: .75fr 1.1fr .9fr .9fr; }
+.platform-home-table strong,
+.platform-company-table strong {
+  display: block;
+  color: var(--ink);
+  font-size: 11px;
+}
+.platform-home-table small,
+.platform-company-table small {
+  display: block;
+  margin-top: 3px;
+  color: #8c959d;
+  font-size: 9px;
+}
+.platform-action-stack { display: grid; gap: 12px; margin-top: 18px; }
+.platform-action-stack .compact-form {
+  margin-top: 0;
+  padding: 13px;
+  border: 1px solid #edf0f1;
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+.platform-action-stack .compact-form .secondary-button { justify-self: start; }
 
 .route-loading, .simple-state { display: grid; min-height: 100vh; place-content: center; justify-items: center; text-align: center; }
 .route-loading span { width: 28px; height: 28px; border: 3px solid #d4e9e5; border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; }

@@ -1,15 +1,26 @@
 # Progresso
 
-Última atualização: 22 de junho de 2026.
+Última atualização: 24 de junho de 2026.
 
 ## Estado geral
 
-Fase atual: **MVP operacional integrado**.
+Fase atual: **Fase 4 - Onboarding empresarial transacional**.
 
 O sistema foi refatorado para uso em uma única empresa, sem módulo de filiais. A
 complexidade de filial/depósito saiu da experiência e do modelo operacional. O MVP
 agora possui estoque principal único, produção simples, pedidos, histórico e gestão
 avançada de usuários, cargos e permissões.
+
+A transformação para SaaS foi iniciada de forma incremental. A Fase 1 prepara o
+domínio para múltiplas empresas clientes, operadores da plataforma, planos
+manuais, assinaturas e limites, sem ativar ainda login ou painel `/platform`.
+A Fase 2 adiciona login, sessão, cookie, logout e auditoria separados para os
+operadores da plataforma.
+A Fase 3 adiciona a primeira experiencia administrativa da plataforma: visao
+geral, listagem de empresas, criacao manual e controle de status.
+A Fase 4 transforma a criacao manual em onboarding transacional: empresa,
+primeiro administrador, cargos, permissoes, setores, catalogo inicial, plano,
+assinatura, limites e auditoria nascem juntos ou nao nascem.
 
 ## Concluído nesta entrega
 
@@ -35,10 +46,45 @@ avançada de usuários, cargos e permissões.
 - [x] Criar central de Usuários com cargos, permissões, overrides e setores.
 - [x] Atualizar menu para permissões efetivas.
 - [x] Atualizar README, DATABASE, SECURITY e PROGRESS.
+- [x] Criar migration `20260624090000_saas_domain_preparation`.
+- [x] Trocar status de empresa para `TRIAL`, `ACTIVE`, `SUSPENDED` e `CANCELLED`.
+- [x] Adicionar metadados de empresa para documento, contato, trial, plano atual
+  e ciclo de vida.
+- [x] Preparar `platform_users`, `platform_sessions` e `platform_audit_logs`.
+- [x] Preparar `plans`, `plan_features`, `subscriptions`, `usage_limits` e
+  `billing_events` sem cobrança real.
+- [x] Permitir acesso empresarial para empresas `TRIAL` e `ACTIVE`; bloquear
+  `SUSPENDED` e `CANCELLED`.
+- [x] Criar login separado em `/platform/login`.
+- [x] Criar sessão e cookie separados da plataforma.
+- [x] Proteger `/platform` sem reutilizar a sessão empresarial.
+- [x] Auditar login, falha de login, logout e seed de operador da plataforma.
+- [x] Preparar seed opcional de operador via `SEED_PLATFORM_*`.
+- [x] Criar visao geral da plataforma em `/platform`.
+- [x] Criar listagem e busca de empresas em `/platform/companies`.
+- [x] Criar detalhe de empresa em `/platform/companies/[id]`.
+- [x] Permitir criacao manual de empresa sem onboarding empresarial completo.
+- [x] Permitir ativar, suspender, reativar e encerrar empresas.
+- [x] Revogar sessoes empresariais ao suspender ou encerrar empresa.
+- [x] Criar helper de onboarding empresarial em `src/lib/organization`.
+- [x] Criar empresa e administrador inicial em uma unica transacao.
+- [x] Preparar cargos padrao, permissoes, setores, unidade `UN` e categoria
+  `Geral` durante o onboarding.
+- [x] Associar plano inicial, assinatura, limites de uso e evento de cobranca
+  manual no onboarding.
+- [x] Registrar auditoria empresarial e auditoria da plataforma para onboarding.
 
 ## Tabelas atuais relevantes
 
 - `users`
+- `platform_users`
+- `platform_sessions`
+- `platform_audit_logs`
+- `plans`
+- `plan_features`
+- `subscriptions`
+- `usage_limits`
+- `billing_events`
 - `roles`
 - `permissions`
 - `user_roles`
@@ -108,10 +154,10 @@ Usuários
 
 Resultado:
 
-- 4 migrations aplicadas.
+- 5 migrations aplicadas.
 - Banco atualizado.
-- 5 arquivos de teste.
-- 14 testes aprovados.
+- 8 arquivos de teste.
+- 24 testes aprovados.
 - Build Next.js aprovado.
 - Nenhuma vulnerabilidade conhecida em produção.
 
@@ -141,10 +187,11 @@ Teste importante:
 
 ## Próximos incrementos recomendados
 
+- Fase 5: revisão completa de isolamento por `companyId`.
+- Fase 6: correção de concorrência em estoque e produção.
 - Recuperação de senha.
 - Convite por e-mail.
 - Ajuste/inventário com aprovação.
 - Expedição com baixa automática vinculada ao pedido.
 - Relatórios e exportação.
 - Melhorias visuais nos formulários grandes de permissões.
-

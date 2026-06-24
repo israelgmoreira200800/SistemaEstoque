@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
-import { canAccessCompany } from "@/lib/auth/company-access";
-import { createSession } from "@/lib/auth/session";
+import { createPlatformSession } from "@/lib/auth/platform-session";
 import { hashPassword, normalizeEmail, verifyPassword } from "@/lib/auth/password";
 import { loginSchema } from "@/lib/auth/validation";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
-export type LoginResult =
+export type PlatformLoginResult =
   | { success: true }
   | { success: false; message: string; fields?: { email?: string[]; password?: string[] } };
 
@@ -21,7 +20,7 @@ async function requestIp() {
   );
 }
 
-export async function authenticate(formData: FormData): Promise<LoginResult> {
+export async function authenticatePlatform(formData: FormData): Promise<PlatformLoginResult> {
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -36,19 +35,14 @@ export async function authenticate(formData: FormData): Promise<LoginResult> {
   }
 
   const email = normalizeEmail(parsed.data.email);
-  const user = await prisma.user.findUnique({
-    where: { email },
-    include: {
-      company: true,
-    },
-  });
+  const platformUser = await prisma.platformUser.findUnique({ where: { email } });
 
-  if (!user) {
+  if (!platformUser) {
     await hashPassword(parsed.data.password);
     return { success: false, message: "E-mail ou senha inválidos." };
   }
 
-  if (user.lockedUntil && user.lockedUntil > new Date()) {
+  if (platformUser.lockedUntil && platformUser.lockedUntil > new Date()) {
     await hashPassword(parsed.data.password);
     return {
       success: false,
@@ -56,28 +50,27 @@ export async function authenticate(formData: FormData): Promise<LoginResult> {
     };
   }
 
-  const passwordMatches = await verifyPassword(parsed.data.password, user.passwordHash);
+  const passwordMatches = await verifyPassword(parsed.data.password, platformUser.passwordHash);
 
-  if (!passwordMatches || user.status !== "ACTIVE" || !canAccessCompany(user.company.status)) {
-    const attempts = user.failedLoginAttempts + 1;
+  if (!passwordMatches || platformUser.status !== "ACTIVE") {
+    const attempts = platformUser.failedLoginAttempts + 1;
     const lockedUntil =
       attempts >= MAX_FAILED_ATTEMPTS
         ? new Date(Date.now() + LOCKOUT_MINUTES * 60_000)
         : null;
 
     await prisma.$transaction([
-      prisma.user.update({
-        where: { id: user.id },
+      prisma.platformUser.update({
+        where: { id: platformUser.id },
         data: {
           failedLoginAttempts: lockedUntil ? 0 : attempts,
           lockedUntil,
         },
       }),
-      prisma.auditLog.create({
+      prisma.platformAuditLog.create({
         data: {
-          companyId: user.companyId,
-          userId: user.id,
-          action: "auth.login.failed",
+          platformUserId: platformUser.id,
+          action: "platform.auth.login.failed",
           ipAddress: await requestIp(),
           metadata: { locked: Boolean(lockedUntil) },
         },
@@ -88,20 +81,19 @@ export async function authenticate(formData: FormData): Promise<LoginResult> {
   }
 
   await prisma.$transaction([
-    prisma.user.update({
-      where: { id: user.id },
+    prisma.platformUser.update({
+      where: { id: platformUser.id },
       data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
     }),
-    prisma.auditLog.create({
+    prisma.platformAuditLog.create({
       data: {
-        companyId: user.companyId,
-        userId: user.id,
-        action: "auth.login.succeeded",
+        platformUserId: platformUser.id,
+        action: "platform.auth.login.succeeded",
         ipAddress: await requestIp(),
       },
     }),
   ]);
 
-  await createSession(user.id, user.companyId);
+  await createPlatformSession(platformUser.id);
   return { success: true };
 }

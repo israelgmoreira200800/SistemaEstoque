@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { canAccessCompany } from "@/lib/auth/company-access";
 import { getServerEnv } from "@/lib/env";
 import { resolveEffectivePermissions, type PermissionKey } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
@@ -81,7 +82,7 @@ export async function getCurrentSession() {
   if (
     !session ||
     session.expiresAt <= new Date() ||
-    session.company.status !== "ACTIVE" ||
+    !canAccessCompany(session.company.status) ||
     session.user.status !== "ACTIVE" ||
     session.user.companyId !== session.companyId
   ) {
@@ -167,4 +168,3 @@ export async function destroyCurrentSession() {
 
   cookieStore.delete(env.SESSION_COOKIE_NAME);
 }
-

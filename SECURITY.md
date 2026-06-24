@@ -15,6 +15,23 @@
 - Cookies são `HttpOnly`, `SameSite=Lax` e `Secure` em produção.
 - Cinco falhas consecutivas geram bloqueio temporário.
 - Usuário `BLOCKED` não consegue autenticar e tem sessões revogadas.
+- Empresas `TRIAL` e `ACTIVE` permitem acesso empresarial.
+- Empresas `SUSPENDED` e `CANCELLED` bloqueiam novas autenticações e invalidam
+  sessões empresariais quando a sessão for revalidada.
+
+## Plataforma
+
+- Operadores da plataforma usam `platform_users`, não `users`.
+- Sessões da plataforma usam `platform_sessions` e cookie próprio.
+- Auditoria da plataforma usa `platform_audit_logs`, separada da auditoria
+  empresarial.
+- O login `/platform/login` e a proteção de `/platform` estão implementados.
+- O painel minimo de empresas esta implementado com onboarding transacional do
+  tenant e do primeiro administrador empresarial.
+- O operador da plataforma cria o tenant, mas nao ganha acesso silencioso aos
+  dados operacionais da empresa criada.
+- Planos, assinaturas detalhadas e operadores da plataforma ficam para fases
+  seguintes.
 
 ## Autorização
 
@@ -58,6 +75,7 @@ São auditados:
 - concessões e negações individuais;
 - entradas, saídas e produção;
 - pedidos e alterações de status;
+- onboarding empresarial criado pela plataforma;
 - seed inicial.
 
 Credenciais, tokens, cookies e segredos nunca devem ser gravados em auditoria.
@@ -74,4 +92,3 @@ Credenciais, tokens, cookies e segredos nunca devem ser gravados em auditoria.
 - `pnpm build`
 - `pnpm audit --prod`
 - `pnpm exec prisma migrate status`
-

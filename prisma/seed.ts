@@ -3,6 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword, normalizeEmail } from "../src/lib/auth/password";
 import { ALL_PERMISSION_KEYS, PERMISSIONS, type PermissionDefinition, type PermissionKey } from "../src/lib/auth/permissions";
+import { slugifyTenant } from "../src/lib/organization/onboarding";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL não configurada.");
@@ -10,15 +11,6 @@ if (!databaseUrl) throw new Error("DATABASE_URL não configurada.");
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: databaseUrl }),
 });
-
-function slugify(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 const roleProfiles: {
   name: string;
@@ -138,11 +130,38 @@ const sectors = [
   "Financeiro",
 ];
 
+const defaultPlan = {
+  name: "Manual Starter",
+  slug: "manual-starter",
+  description: "Plano inicial controlado manualmente pela plataforma.",
+  monthlyPriceCents: 0,
+  currency: "BRL",
+  trialDays: 14,
+};
+
+const defaultPlanFeatures = [
+  { key: "users", name: "Usuários", value: { limit: 50 } },
+  { key: "items", name: "Itens", value: { limit: 1000 } },
+  { key: "production", name: "Módulo de produção", value: { enabled: true } },
+  { key: "audit", name: "Auditoria", value: { enabled: true } },
+  { key: "support", name: "Suporte", value: { level: "standard" } },
+];
+
+const defaultUsageLimits = [
+  { key: "users", limitValue: 50, unit: "usuários" },
+  { key: "items", limitValue: 1000, unit: "itens" },
+  { key: "exports", limitValue: 100, unit: "exportações/mês" },
+];
+
 async function main() {
   const companyName = process.env.SEED_COMPANY_NAME;
   const adminName = process.env.SEED_ADMIN_NAME;
   const adminEmail = process.env.SEED_ADMIN_EMAIL;
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  const platformName = process.env.SEED_PLATFORM_NAME;
+  const platformEmail = process.env.SEED_PLATFORM_EMAIL;
+  const platformPassword = process.env.SEED_PLATFORM_PASSWORD;
+  const platformRole = process.env.SEED_PLATFORM_ROLE ?? "OWNER";
 
   if (!companyName || !adminName || !adminEmail || !adminPassword) {
     console.log("Seed administrativo ignorado: variáveis SEED_* incompletas.");
@@ -152,10 +171,21 @@ async function main() {
   if (adminPassword.length < 12) {
     throw new Error("SEED_ADMIN_PASSWORD deve possuir pelo menos 12 caracteres.");
   }
+  if ((platformName || platformEmail || platformPassword) && (!platformName || !platformEmail || !platformPassword)) {
+    throw new Error("SEED_PLATFORM_NAME, SEED_PLATFORM_EMAIL e SEED_PLATFORM_PASSWORD devem ser preenchidas juntas.");
+  }
+  if (platformPassword && platformPassword.length < 12) {
+    throw new Error("SEED_PLATFORM_PASSWORD deve possuir pelo menos 12 caracteres.");
+  }
+  if (!["OWNER", "ADMIN", "OPERATOR", "SUPPORT"].includes(platformRole)) {
+    throw new Error("SEED_PLATFORM_ROLE deve ser OWNER, ADMIN, OPERATOR ou SUPPORT.");
+  }
 
   const passwordHash = await hashPassword(adminPassword);
+  const platformPasswordHash = platformPassword ? await hashPassword(platformPassword) : null;
 
   await prisma.$transaction(async (tx) => {
+    const now = new Date();
     const permissionRecords = await Promise.all(
       PERMISSIONS.map((permission) => {
         const record: PermissionDefinition = permission;
@@ -178,11 +208,81 @@ async function main() {
 
     const permissionByKey = new Map(permissionRecords.map((permission) => [permission.key, permission]));
 
-    const company = await tx.company.upsert({
-      where: { slug: slugify(companyName) },
-      update: { name: companyName, status: "ACTIVE" },
-      create: { name: companyName, slug: slugify(companyName) },
+    const plan = await tx.plan.upsert({
+      where: { slug: defaultPlan.slug },
+      update: {
+        name: defaultPlan.name,
+        description: defaultPlan.description,
+        status: "ACTIVE",
+        monthlyPriceCents: defaultPlan.monthlyPriceCents,
+        currency: defaultPlan.currency,
+        trialDays: defaultPlan.trialDays,
+      },
+      create: defaultPlan,
     });
+
+    await Promise.all(
+      defaultPlanFeatures.map((feature) =>
+        tx.planFeature.upsert({
+          where: { planId_key: { planId: plan.id, key: feature.key } },
+          update: { name: feature.name, value: feature.value },
+          create: { planId: plan.id, ...feature },
+        }),
+      ),
+    );
+
+    const company = await tx.company.upsert({
+      where: { slug: slugifyTenant(companyName) },
+      update: { name: companyName, status: "ACTIVE", planId: plan.id },
+      create: {
+        name: companyName,
+        slug: slugifyTenant(companyName),
+        status: "ACTIVE",
+        planId: plan.id,
+        activatedAt: now,
+      },
+    });
+
+    const subscription = await tx.subscription.findFirst({
+      where: { companyId: company.id },
+      orderBy: { createdAt: "desc" },
+    });
+    const activeSubscription = subscription
+      ? await tx.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            planId: plan.id,
+            status: "ACTIVE",
+            currentPeriodStartedAt: subscription.currentPeriodStartedAt ?? now,
+          },
+        })
+      : await tx.subscription.create({
+          data: {
+            companyId: company.id,
+            planId: plan.id,
+            status: "ACTIVE",
+            startedAt: now,
+            currentPeriodStartedAt: now,
+          },
+        });
+
+    await Promise.all(
+      defaultUsageLimits.map((limit) =>
+        tx.usageLimit.upsert({
+          where: { companyId_key: { companyId: company.id, key: limit.key } },
+          update: {
+            subscriptionId: activeSubscription.id,
+            limitValue: limit.limitValue,
+            unit: limit.unit,
+          },
+          create: {
+            companyId: company.id,
+            subscriptionId: activeSubscription.id,
+            ...limit,
+          },
+        }),
+      ),
+    );
 
     await Promise.all(
       sectors.map((name) =>
@@ -280,12 +380,47 @@ async function main() {
         action: "system.seed.completed",
         entityType: "company",
         entityId: company.id,
-        metadata: { defaultUnitId: unit.id, roleProfiles: roleProfiles.map((role) => role.slug) },
+        metadata: {
+          defaultUnitId: unit.id,
+          planId: plan.id,
+          subscriptionId: activeSubscription.id,
+          roleProfiles: roleProfiles.map((role) => role.slug),
+        },
       },
     });
+
+    if (platformName && platformEmail && platformPasswordHash) {
+      const platformUser = await tx.platformUser.upsert({
+        where: { email: normalizeEmail(platformEmail) },
+        update: {
+          name: platformName,
+          role: platformRole as "OWNER" | "ADMIN" | "OPERATOR" | "SUPPORT",
+          status: "ACTIVE",
+        },
+        create: {
+          name: platformName,
+          email: normalizeEmail(platformEmail),
+          passwordHash: platformPasswordHash,
+          role: platformRole as "OWNER" | "ADMIN" | "OPERATOR" | "SUPPORT",
+        },
+      });
+
+      await tx.platformAuditLog.create({
+        data: {
+          platformUserId: platformUser.id,
+          action: "platform.seed.completed",
+          entityType: "platform_user",
+          entityId: platformUser.id,
+          metadata: { role: platformUser.role },
+        },
+      });
+    }
   });
 
   console.log(`Empresa, cargos, permissões e administrador preparados para ${normalizeEmail(adminEmail)}.`);
+  if (platformEmail) {
+    console.log(`Operador da plataforma preparado para ${normalizeEmail(platformEmail)}.`);
+  }
 }
 
 main()
