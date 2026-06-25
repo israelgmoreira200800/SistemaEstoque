@@ -27,7 +27,15 @@ export function OrderForm({ items }: { items: { id: string; name: string; unit: 
   );
 }
 
-export function OrderStatusForm({ id, currentStatus }: { id: string; currentStatus: string }) {
+export function OrderStatusForm({
+  id,
+  currentStatus,
+  canDispatch,
+}: {
+  id: string;
+  currentStatus: string;
+  canDispatch: boolean;
+}) {
   const [state, action, pending] = useActionState(changeOrderStatusAction, initialState);
   return (
     <form action={action} className="inline-status-form">
@@ -37,7 +45,7 @@ export function OrderStatusForm({ id, currentStatus }: { id: string; currentStat
         <option value="APPROVED">Aprovado</option>
         <option value="IN_PRODUCTION">Em produção</option>
         <option value="READY">Pronto</option>
-        <option value="SHIPPED">Enviado</option>
+        {(canDispatch || currentStatus === "SHIPPED") && <option value="SHIPPED">Enviado</option>}
         <option value="CANCELED">Cancelado</option>
       </select>
       <button className="text-button" disabled={pending}>{pending ? "Aguarde…" : "Salvar"}</button>
@@ -46,3 +54,14 @@ export function OrderStatusForm({ id, currentStatus }: { id: string; currentStat
   );
 }
 
+export function DispatchOrderForm({ id }: { id: string }) {
+  const [state, action, pending] = useActionState(changeOrderStatusAction, initialState);
+  return (
+    <form action={action} className="inline-status-form">
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="status" value="SHIPPED" />
+      <button className="text-button" disabled={pending}>{pending ? "Expedindo..." : "Expedir"}</button>
+      <Feedback state={state} />
+    </form>
+  );
+}

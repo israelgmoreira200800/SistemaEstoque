@@ -10,12 +10,23 @@ const mainNavigation = [
   { href: "/dashboard/itens", label: "Itens", icon: "boxes", permission: "item.view" },
   { href: "/dashboard/entradas", label: "Entradas", icon: "packagePlus", permission: "stock.entry" },
   { href: "/dashboard/saidas", label: "Saídas", icon: "packageMinus", permission: "stock.exit" },
+  { href: "/dashboard/ajustes", label: "Ajustes", icon: "clipboardCheck", permissions: ["stock.adjust", "stock.inventory", "stock.adjust_approve"] },
   { href: "/dashboard/producao", label: "Produção", icon: "factory", permission: "production.view" },
   { href: "/dashboard/pedidos", label: "Pedidos", icon: "clipboardList", permission: "order.view" },
+  { href: "/dashboard/relatorios", label: "Relatorios", icon: "barChart3", permission: "report.view" },
   { href: "/dashboard/historico", label: "Histórico", icon: "history", permission: "stock.view" },
   { href: "/dashboard/usuarios", label: "Usuários", icon: "users", permission: "user.view" },
   { href: "/dashboard/configuracoes", label: "Configurações", icon: "settings", permission: "settings.manage" },
 ] as const;
+
+type MainNavigationItem = (typeof mainNavigation)[number];
+
+function canSeeNavigationItem(item: MainNavigationItem, grantedPermissions: ReadonlySet<string>) {
+  if ("permissions" in item) {
+    return item.permissions.some((permission) => grantedPermissions.has(permission));
+  }
+  return grantedPermissions.has(item.permission);
+}
 
 export function AppSidebar({ session }: { session: AuthSession }) {
   const initials = session.user.name
@@ -25,7 +36,7 @@ export function AppSidebar({ session }: { session: AuthSession }) {
     .join("")
     .toUpperCase();
   const visibleNavigation: SidebarNavItem[] = mainNavigation
-    .filter(({ permission }) => session.permissions.has(permission))
+    .filter((item) => canSeeNavigationItem(item, session.permissions))
     .map(({ href, label, icon }) => ({ href, label, icon }));
 
   return (

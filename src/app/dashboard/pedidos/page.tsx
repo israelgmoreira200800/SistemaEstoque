@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { formatQuantity } from "@/lib/stock/quantity";
-import { OrderForm, OrderStatusForm } from "./order-forms";
+import { DispatchOrderForm, OrderForm, OrderStatusForm } from "./order-forms";
 
 const statusLabels: Record<string, string> = {
   OPEN: "Aberto",
@@ -16,6 +16,8 @@ const statusLabels: Record<string, string> = {
 
 export default async function OrdersPage() {
   const session = await requirePermission("order.view");
+  const canChangeOrderStatus = session.permissions.has("order.change_status");
+  const canDispatchOrders = session.permissions.has("shipment.dispatch");
   const [items, orders] = await Promise.all([
     prisma.item.findMany({
       where: { companyId: session.company.id, status: "ACTIVE" },
@@ -25,7 +27,10 @@ export default async function OrdersPage() {
     prisma.customerOrder.findMany({
       where: { companyId: session.company.id },
       include: {
-        items: { include: { item: { include: { unit: true } } } },
+        items: {
+          where: { companyId: session.company.id, item: { companyId: session.company.id } },
+          include: { item: { include: { unit: true } } },
+        },
         createdBy: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -54,7 +59,15 @@ export default async function OrdersPage() {
                 <span>{order.items.map((orderItem) => `${formatQuantity(orderItem.quantity)} ${orderItem.item.unit.symbol} ${orderItem.item.name}`).join(", ")}</span>
                 <span><span className={`status-badge ${order.status === "CANCELED" ? "status-inactive" : ""}`}><span />{statusLabels[order.status]}</span></span>
                 <span>{order.createdBy?.name ?? "Sistema"}</span>
-                <span>{session.permissions.has("order.change_status") ? <OrderStatusForm id={order.id} currentStatus={order.status} /> : "—"}</span>
+                <span>
+                  {canChangeOrderStatus ? (
+                    <OrderStatusForm id={order.id} currentStatus={order.status} canDispatch={canDispatchOrders} />
+                  ) : canDispatchOrders && order.status !== "SHIPPED" && order.status !== "CANCELED" ? (
+                    <DispatchOrderForm id={order.id} />
+                  ) : (
+                    "—"
+                  )}
+                </span>
               </div>
             ))}
             {orders.length === 0 && <p className="empty-state">Nenhum pedido registrado.</p>}
@@ -64,4 +77,3 @@ export default async function OrdersPage() {
     </>
   );
 }
-

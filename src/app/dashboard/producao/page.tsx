@@ -22,7 +22,11 @@ export default async function ProductionPage() {
       include: {
         unit: true,
         productRecipe: {
-          where: { status: "ACTIVE" },
+          where: {
+            companyId: session.company.id,
+            status: "ACTIVE",
+            componentItem: { companyId: session.company.id },
+          },
           include: { componentItem: { include: { unit: true, stockBalance: true } } },
           orderBy: { createdAt: "asc" },
         },
@@ -30,13 +34,18 @@ export default async function ProductionPage() {
       orderBy: { name: "asc" },
     }),
     prisma.productComponent.findMany({
-      where: { companyId: session.company.id, status: "ACTIVE" },
+      where: {
+        companyId: session.company.id,
+        status: "ACTIVE",
+        product: { companyId: session.company.id },
+        componentItem: { companyId: session.company.id },
+      },
       include: { product: true, componentItem: { include: { unit: true } } },
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
     prisma.production.findMany({
-      where: { companyId: session.company.id },
+      where: { companyId: session.company.id, product: { companyId: session.company.id } },
       include: { product: { include: { unit: true } }, createdBy: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -114,4 +123,3 @@ export default async function ProductionPage() {
     </>
   );
 }
-

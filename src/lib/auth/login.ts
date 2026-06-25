@@ -39,7 +39,15 @@ export async function authenticate(formData: FormData): Promise<LoginResult> {
   const user = await prisma.user.findUnique({
     where: { email },
     include: {
-      company: true,
+      company: {
+        include: {
+          subscriptions: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { status: true },
+          },
+        },
+      },
     },
   });
 
@@ -58,7 +66,11 @@ export async function authenticate(formData: FormData): Promise<LoginResult> {
 
   const passwordMatches = await verifyPassword(parsed.data.password, user.passwordHash);
 
-  if (!passwordMatches || user.status !== "ACTIVE" || !canAccessCompany(user.company.status)) {
+  if (
+    !passwordMatches ||
+    user.status !== "ACTIVE" ||
+    !canAccessCompany(user.company.status, user.company.subscriptions[0]?.status)
+  ) {
     const attempts = user.failedLoginAttempts + 1;
     const lockedUntil =
       attempts >= MAX_FAILED_ATTEMPTS

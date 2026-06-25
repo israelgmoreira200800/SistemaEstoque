@@ -373,6 +373,22 @@ async function main() {
       create: { companyId: company.id, name: "Geral" },
     });
 
+    const [activeUserCount, activeItemCount] = await Promise.all([
+      tx.user.count({ where: { companyId: company.id, status: "ACTIVE" } }),
+      tx.item.count({ where: { companyId: company.id, status: "ACTIVE" } }),
+    ]);
+
+    await Promise.all([
+      tx.usageLimit.updateMany({
+        where: { companyId: company.id, key: "users" },
+        data: { usedValue: activeUserCount },
+      }),
+      tx.usageLimit.updateMany({
+        where: { companyId: company.id, key: "items" },
+        data: { usedValue: activeItemCount },
+      }),
+    ]);
+
     await tx.auditLog.create({
       data: {
         companyId: company.id,

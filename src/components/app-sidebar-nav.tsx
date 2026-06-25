@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   Boxes,
+  ClipboardCheck,
   ClipboardList,
   Factory,
   Gauge,
@@ -15,7 +17,9 @@ import {
 } from "lucide-react";
 
 const iconMap = {
+  barChart3: BarChart3,
   boxes: Boxes,
+  clipboardCheck: ClipboardCheck,
   clipboardList: ClipboardList,
   factory: Factory,
   gauge: Gauge,

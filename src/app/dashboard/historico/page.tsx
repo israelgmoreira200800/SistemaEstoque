@@ -20,7 +20,7 @@ export default async function HistoryPage() {
   const session = await requirePermission("stock.view");
   const [movements, audits] = await Promise.all([
     prisma.stockMovement.findMany({
-      where: { companyId: session.company.id },
+      where: { companyId: session.company.id, item: { companyId: session.company.id } },
       include: { item: { include: { unit: true } }, createdBy: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 100,
@@ -76,4 +76,3 @@ export default async function HistoryPage() {
     </>
   );
 }
-

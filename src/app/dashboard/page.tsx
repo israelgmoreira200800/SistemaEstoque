@@ -1,7 +1,9 @@
 import Link from "next/link";
 import {
   ArrowUpRight,
+  BarChart3,
   Boxes,
+  ClipboardCheck,
   ClipboardList,
   Factory,
   History,
@@ -20,8 +22,13 @@ const actionLabels: Record<string, string> = {
   "system.seed.completed": "Ambiente inicial preparado",
   "stock.increased": "Estoque aumentado",
   "stock.decreased": "Estoque reduzido",
+  "stock.adjustment.requested": "Ajuste solicitado",
+  "stock.adjustment.approved": "Ajuste aprovado",
+  "stock.adjustment.rejected": "Ajuste rejeitado",
   "production.finished": "Produção registrada",
   "order.created": "Pedido criado",
+  "order.shipped": "Pedido expedido",
+  "report.exported": "Relatorio exportado",
   "role.updated": "Cargo atualizado",
   "user.permission_override.changed": "Permissão individual alterada",
 };
@@ -41,14 +48,14 @@ export default async function DashboardPage() {
     prisma.user.count({ where: { companyId: session.company.id, status: "ACTIVE" } }),
     prisma.item.count({ where: { companyId: session.company.id, status: "ACTIVE" } }),
     prisma.stockBalance.findMany({
-      where: { companyId: session.company.id },
+      where: { companyId: session.company.id, item: { companyId: session.company.id } },
       include: { item: { include: { unit: true } } },
       orderBy: { updatedAt: "desc" },
       take: 5,
     }),
     prisma.customerOrder.count({ where: { companyId: session.company.id, status: { not: "CANCELED" } } }),
     prisma.stockMovement.findMany({
-      where: { companyId: session.company.id },
+      where: { companyId: session.company.id, item: { companyId: session.company.id } },
       include: { item: { include: { unit: true } } },
       orderBy: { createdAt: "desc" },
       take: 5,
@@ -66,9 +73,17 @@ export default async function DashboardPage() {
     { href: "/dashboard/itens", label: "Novo item", icon: Boxes, permission: "item.create" },
     { href: "/dashboard/entradas", label: "Registrar entrada", icon: PackagePlus, permission: "stock.entry" },
     { href: "/dashboard/saidas", label: "Registrar saída", icon: PackageMinus, permission: "stock.exit" },
+    { href: "/dashboard/ajustes", label: "Solicitar ajuste", icon: ClipboardCheck, permissions: ["stock.adjust", "stock.inventory"] },
     { href: "/dashboard/producao", label: "Registrar produção", icon: Factory, permission: "production.finish" },
     { href: "/dashboard/pedidos", label: "Novo pedido", icon: ClipboardList, permission: "order.create" },
-  ].filter((shortcut) => session.permissions.has(shortcut.permission));
+    { href: "/dashboard/relatorios", label: "Ver relatorios", icon: BarChart3, permission: "report.view" },
+  ].filter((shortcut) => {
+    const permissions =
+      "permissions" in shortcut && shortcut.permissions
+        ? shortcut.permissions
+        : [shortcut.permission];
+    return permissions.some((permission) => session.permissions.has(permission));
+  });
 
   return (
     <>

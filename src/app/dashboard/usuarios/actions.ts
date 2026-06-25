@@ -4,8 +4,11 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { ALL_PERMISSION_KEYS, type PermissionKey } from "@/lib/auth/permissions";
 import { wouldAffectLastPermissionManager } from "@/lib/auth/admin-guards";
+import { createAccountToken } from "@/lib/auth/account-tokens";
 import { hashPassword, normalizeEmail } from "@/lib/auth/password";
-import { createRoleSchema, createSectorSchema, createUserSchema } from "@/lib/users/validation";
+import { consumeUsageLimit, syncUsageLimitCounter } from "@/lib/billing/usage-limits";
+import { createRoleSchema, createSectorSchema, inviteUserSchema } from "@/lib/users/validation";
+import { createUserInvitation } from "@/lib/users/invitations";
 import { prisma } from "@/lib/prisma";
 
 export type AccessActionState = { success?: string; error?: string };
@@ -33,10 +36,10 @@ export async function createUserAction(
   formData: FormData,
 ): Promise<AccessActionState> {
   const session = await requirePermission("user.create");
-  const parsed = createUserSchema.safeParse(Object.fromEntries(formData));
+  const parsed = inviteUserSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
 
-  const passwordHash = await hashPassword(parsed.data.password);
+  const passwordHash = await hashPassword(createAccountToken().token);
   const roleId = parsed.data.roleId || undefined;
   const sectorId = parsed.data.sectorId || undefined;
 
@@ -57,18 +60,26 @@ export async function createUserAction(
           name: parsed.data.name,
           email: normalizeEmail(parsed.data.email),
           passwordHash,
+          status: "BLOCKED",
         },
       });
       if (roleId) await tx.userRole.create({ data: { userId: user.id, roleId } });
       if (sectorId) await tx.userSector.create({ data: { userId: user.id, sectorId } });
+      const { invitation, emailMessage } = await createUserInvitation(tx, {
+        companyId: session.company.id,
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        createdByUserId: session.user.id,
+      });
       await tx.auditLog.create({
         data: {
           companyId: session.company.id,
           userId: session.user.id,
-          action: "user.created",
+          action: "user.invited",
           entityType: "user",
           entityId: user.id,
-          metadata: { roleId, sectorId },
+          metadata: { roleId, sectorId, invitationId: invitation.id, emailOutboxId: emailMessage.id },
         },
       });
     });
@@ -77,7 +88,7 @@ export async function createUserAction(
   }
 
   revalidatePath("/dashboard/usuarios");
-  return { success: "Usuário criado." };
+  return { success: "Convite criado e e-mail enfileirado." };
 }
 
 export async function toggleUserStatusAction(
@@ -95,10 +106,23 @@ export async function toggleUserStatusAction(
     return { error: "Não é possível bloquear o último usuário com acesso administrativo." };
   }
 
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: user.id }, data: { status: nextStatus } }),
-    prisma.session.deleteMany({ where: { userId: user.id } }),
-    prisma.auditLog.create({
+  const result = await prisma.$transaction(async (tx) => {
+    if (nextStatus === "ACTIVE") {
+      const usage = await consumeUsageLimit(tx, {
+        companyId: session.company.id,
+        key: "users",
+      });
+      if (!usage.allowed) return { error: usage.error };
+    }
+
+    await tx.user.updateMany({ where: { id: user.id, companyId: session.company.id }, data: { status: nextStatus } });
+
+    if (nextStatus === "BLOCKED") {
+      await tx.session.deleteMany({ where: { userId: user.id, companyId: session.company.id } });
+      await syncUsageLimitCounter(tx, { companyId: session.company.id, key: "users" });
+    }
+
+    await tx.auditLog.create({
       data: {
         companyId: session.company.id,
         userId: session.user.id,
@@ -106,11 +130,49 @@ export async function toggleUserStatusAction(
         entityType: "user",
         entityId: user.id,
       },
-    }),
-  ]);
+    });
+
+    return { success: true };
+  });
+
+  if ("error" in result) return { error: result.error };
 
   revalidatePath("/dashboard/usuarios");
   return { success: nextStatus === "ACTIVE" ? "Usuário desbloqueado." : "Usuário bloqueado." };
+}
+
+export async function resendUserInviteAction(
+  _state: AccessActionState,
+  formData: FormData,
+): Promise<AccessActionState> {
+  const session = await requirePermission("user.update");
+  const id = String(formData.get("id") ?? "");
+  const user = await prisma.user.findFirst({ where: { id, companyId: session.company.id } });
+  if (!user) return { error: "Usuario nao encontrado." };
+  if (user.status !== "BLOCKED") return { error: "Apenas usuarios bloqueados podem receber novo convite." };
+
+  await prisma.$transaction(async (tx) => {
+    const { invitation, emailMessage } = await createUserInvitation(tx, {
+      companyId: session.company.id,
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      createdByUserId: session.user.id,
+    });
+    await tx.auditLog.create({
+      data: {
+        companyId: session.company.id,
+        userId: session.user.id,
+        action: "user.invite.resent",
+        entityType: "user",
+        entityId: user.id,
+        metadata: { invitationId: invitation.id, emailOutboxId: emailMessage.id },
+      },
+    });
+  });
+
+  revalidatePath("/dashboard/usuarios");
+  return { success: "Convite reenviado e e-mail enfileirado." };
 }
 
 export async function assignRoleAction(
@@ -297,8 +359,8 @@ export async function updateRoleAction(
 
   const permissions = await prisma.permission.findMany({ where: { key: { in: permissionKeys } } });
   await prisma.$transaction(async (tx) => {
-    await tx.role.update({
-      where: { id: role.id },
+    await tx.role.updateMany({
+      where: { id: role.id, companyId: session.company.id },
       data: { name: parsed.data.name, description: parsed.data.description },
     });
     await tx.rolePermission.deleteMany({ where: { roleId: role.id } });
@@ -397,7 +459,7 @@ export async function inactivateRoleAction(
   }
 
   await prisma.$transaction([
-    prisma.role.update({ where: { id: role.id }, data: { status: "INACTIVE" } }),
+    prisma.role.updateMany({ where: { id: role.id, companyId: session.company.id }, data: { status: "INACTIVE" } }),
     prisma.auditLog.create({
       data: {
         companyId: session.company.id,

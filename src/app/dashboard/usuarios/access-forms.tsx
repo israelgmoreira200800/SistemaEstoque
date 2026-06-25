@@ -9,6 +9,7 @@ import {
   createUserAction,
   duplicateRoleAction,
   inactivateRoleAction,
+  resendUserInviteAction,
   setUserPermissionOverrideAction,
   toggleUserStatusAction,
   updateRoleAction,
@@ -63,15 +64,14 @@ export function CreateUserForm({ roles, sectors }: { roles: Role[]; sectors: Sec
   const [state, action, pending] = useActionState(createUserAction, initialState);
   return (
     <form action={action} className="item-form access-create-form">
-      <div className="form-row four-columns">
+      <div className="form-row three-columns">
         <label>Nome<input name="name" required /></label>
         <label>E-mail<input name="email" type="email" required /></label>
-        <label>Senha inicial<input name="password" type="password" minLength={12} required /></label>
         <label>Cargo inicial<select name="roleId" defaultValue=""><option value="">Sem cargo</option>{roles.filter((role) => role.status === "ACTIVE").map((role) => <option value={role.id} key={role.id}>{role.name}</option>)}</select></label>
       </div>
       <label>Setor inicial<select name="sectorId" defaultValue=""><option value="">Sem setor</option>{sectors.filter((sector) => sector.status === "ACTIVE").map((sector) => <option value={sector.id} key={sector.id}>{sector.name}</option>)}</select></label>
       <Feedback state={state} />
-      <button className="primary-button form-submit" disabled={pending}>{pending ? "Criando…" : "Criar usuário"}</button>
+      <button className="primary-button form-submit" disabled={pending}>{pending ? "Enviando..." : "Criar convite"}</button>
     </form>
   );
 }
@@ -154,6 +154,7 @@ function PermissionChecklist({ groups, selected, disabled = false }: { groups: P
 
 export function UserAccessCard({ user, roles, sectors, permissionKeys }: { user: User; roles: Role[]; sectors: Sector[]; permissionKeys: { key: string; name: string }[] }) {
   const [statusState, statusAction, toggling] = useActionState(toggleUserStatusAction, initialState);
+  const [inviteState, inviteAction, resendingInvite] = useActionState(resendUserInviteAction, initialState);
   const [roleState, roleAction, assigningRole] = useActionState(assignRoleAction, initialState);
   const [sectorState, sectorAction, assigningSector] = useActionState(assignSectorAction, initialState);
   const [overrideState, overrideAction, overriding] = useActionState(setUserPermissionOverrideAction, initialState);
@@ -211,6 +212,17 @@ export function UserAccessCard({ user, roles, sectors, permissionKeys }: { user:
         <button className="secondary-button" disabled={toggling}>{toggling ? "Aguarde…" : user.status === "ACTIVE" ? "Bloquear" : "Desbloquear"}</button>
         <Feedback state={statusState} />
       </form>
+      {user.status === "BLOCKED" && (
+        <form action={inviteAction} className="compact-form invite-resend-form">
+          <input type="hidden" name="id" value={user.id} />
+          <div>
+            <strong>Convite de acesso</strong>
+            <p>Gera um novo link e invalida convites anteriores pendentes.</p>
+          </div>
+          <button className="secondary-button" disabled={resendingInvite}>{resendingInvite ? "Enviando..." : "Reenviar convite"}</button>
+          <Feedback state={inviteState} />
+        </form>
+      )}
       </div>
     </details>
   );

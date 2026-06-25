@@ -1,9 +1,9 @@
 import { resolveEffectivePermissions } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 
-export async function userHasPermissionManage(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+export async function userHasPermissionManage(companyId: string, userId: string) {
+  const user = await prisma.user.findFirst({
+    where: { id: userId, companyId },
     include: {
       roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
       permissionOverrides: { include: { permission: true } },
@@ -52,8 +52,7 @@ export async function countActivePermissionManagers(companyId: string) {
 export async function wouldAffectLastPermissionManager(companyId: string, userId: string) {
   const [count, targetIsManager] = await Promise.all([
     countActivePermissionManagers(companyId),
-    userHasPermissionManage(userId),
+    userHasPermissionManage(companyId, userId),
   ]);
   return targetIsManager && count <= 1;
 }
-

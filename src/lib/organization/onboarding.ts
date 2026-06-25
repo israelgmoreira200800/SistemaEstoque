@@ -202,6 +202,7 @@ export async function createCompanyOnboarding(
     data: DEFAULT_USAGE_LIMITS.map((limit) => ({
       companyId: company.id,
       subscriptionId: subscription.id,
+      usedValue: limit.key === "users" ? 1 : 0,
       ...limit,
     })),
     skipDuplicates: true,

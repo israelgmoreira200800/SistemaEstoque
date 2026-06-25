@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  BarChart3,
   Bell,
   Boxes,
   ClipboardList,
@@ -22,6 +23,7 @@ const searchableRoutes = [
   { label: "Saídas", description: "Registrar baixa de estoque", href: "/dashboard/saidas", icon: PackageMinus },
   { label: "Produção", description: "Fichas técnicas e produção", href: "/dashboard/producao", icon: Factory },
   { label: "Pedidos", description: "Pedidos e status", href: "/dashboard/pedidos", icon: ClipboardList },
+  { label: "Relatorios", description: "Indicadores e CSV", href: "/dashboard/relatorios", icon: BarChart3 },
   { label: "Histórico", description: "Movimentações e auditoria", href: "/dashboard/historico", icon: History },
   { label: "Usuários", description: "Acessos e permissões", href: "/dashboard/usuarios", icon: Users },
   { label: "Configurações", description: "Parâmetros da instalação", href: "/dashboard/configuracoes", icon: Settings },

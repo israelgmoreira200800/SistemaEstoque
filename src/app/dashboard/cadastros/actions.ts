@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
+import { consumeUsageLimit, syncUsageLimitCounter } from "@/lib/billing/usage-limits";
 import { createCategorySchema, createItemSchema, createUnitSchema, unitConversionSchema, updateCategorySchema, updateItemSchema, updateUnitSchema } from "@/lib/catalog/validation";
 import { prisma } from "@/lib/prisma";
 
@@ -77,10 +78,18 @@ export async function createItemAction(
   if (!unit.allowsFraction && !Number.isInteger(Number(parsed.data.minimumStock))) return { error: "Essa unidade não permite estoque mínimo fracionário." };
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      const usage = await consumeUsageLimit(tx, {
+        companyId: session.company.id,
+        key: "items",
+      });
+      if (!usage.allowed) return { error: usage.error };
+
       const item = await tx.item.create({ data: { companyId: session.company.id, ...parsed.data } });
       await tx.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: "catalog.item.created", entityType: "item", entityId: item.id, metadata: { name: item.name, sku: item.sku, type: item.type } } });
+      return { success: true };
     });
+    if ("error" in result) return { error: result.error };
     revalidatePath("/dashboard/itens");
     revalidatePath("/dashboard/cadastros");
     return { success: "Item cadastrado." };
@@ -97,7 +106,7 @@ export async function updateUnitAction(_state: CatalogActionState, formData: For
   if (!current) return { error: "Unidade não encontrada." };
   try {
     await prisma.$transaction([
-      prisma.unit.update({ where: { id: current.id }, data: { name: parsed.data.name, symbol: parsed.data.symbol, allowsFraction: parsed.data.allowsFraction } }),
+      prisma.unit.updateMany({ where: { id: current.id, companyId: session.company.id }, data: { name: parsed.data.name, symbol: parsed.data.symbol, allowsFraction: parsed.data.allowsFraction } }),
       prisma.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: "catalog.unit.updated", entityType: "unit", entityId: current.id, metadata: { before: { name: current.name, symbol: current.symbol }, after: parsed.data } } }),
     ]);
     revalidatePath("/dashboard/itens");
@@ -117,7 +126,7 @@ export async function toggleUnitAction(_state: CatalogActionState, formData: For
     if (usage > 0) return { error: "A unidade está vinculada a itens ativos." };
   }
   await prisma.$transaction([
-    prisma.unit.update({ where: { id: unit.id }, data: { status: nextStatus } }),
+    prisma.unit.updateMany({ where: { id: unit.id, companyId: session.company.id }, data: { status: nextStatus } }),
     prisma.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: `catalog.unit.${nextStatus === "ACTIVE" ? "activated" : "inactivated"}`, entityType: "unit", entityId: unit.id } }),
   ]);
   revalidatePath("/dashboard/itens");
@@ -133,7 +142,7 @@ export async function updateCategoryAction(_state: CatalogActionState, formData:
   if (!current) return { error: "Categoria não encontrada." };
   try {
     await prisma.$transaction([
-      prisma.itemCategory.update({ where: { id: current.id }, data: { name: parsed.data.name } }),
+      prisma.itemCategory.updateMany({ where: { id: current.id, companyId: session.company.id }, data: { name: parsed.data.name } }),
       prisma.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: "catalog.category.updated", entityType: "item_category", entityId: current.id, metadata: { before: { name: current.name }, after: parsed.data } } }),
     ]);
     revalidatePath("/dashboard/itens");
@@ -149,7 +158,7 @@ export async function toggleCategoryAction(_state: CatalogActionState, formData:
   if (!category) return { error: "Categoria não encontrada." };
   const nextStatus = category.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
   await prisma.$transaction([
-    prisma.itemCategory.update({ where: { id: category.id }, data: { status: nextStatus } }),
+    prisma.itemCategory.updateMany({ where: { id: category.id, companyId: session.company.id }, data: { status: nextStatus } }),
     prisma.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: `catalog.category.${nextStatus === "ACTIVE" ? "activated" : "inactivated"}`, entityType: "item_category", entityId: category.id } }),
   ]);
   revalidatePath("/dashboard/itens");
@@ -174,7 +183,7 @@ export async function updateItemAction(_state: CatalogActionState, formData: For
   if (!unit.allowsFraction && !Number.isInteger(Number(parsed.data.minimumStock))) return { error: "Essa unidade não permite estoque mínimo fracionário." };
   try {
     await prisma.$transaction([
-      prisma.item.update({ where: { id: current.id }, data: { name: parsed.data.name, type: parsed.data.type, unitId: parsed.data.unitId, categoryId: parsed.data.categoryId, sku: parsed.data.sku, barcode: parsed.data.barcode, minimumStock: parsed.data.minimumStock, description: parsed.data.description } }),
+      prisma.item.updateMany({ where: { id: current.id, companyId: session.company.id }, data: { name: parsed.data.name, type: parsed.data.type, unitId: parsed.data.unitId, categoryId: parsed.data.categoryId, sku: parsed.data.sku, barcode: parsed.data.barcode, minimumStock: parsed.data.minimumStock, description: parsed.data.description } }),
       prisma.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: "catalog.item.updated", entityType: "item", entityId: current.id, metadata: { before: { name: current.name, sku: current.sku }, after: { name: parsed.data.name, sku: parsed.data.sku } } } }),
     ]);
     revalidatePath(`/dashboard/cadastros/itens/${current.id}`); revalidatePath(`/dashboard/itens/${current.id}`); revalidatePath("/dashboard/itens"); revalidatePath("/dashboard/cadastros");
@@ -188,10 +197,25 @@ export async function toggleItemAction(_state: CatalogActionState, formData: For
   const item = await prisma.item.findFirst({ where: { id, companyId: session.company.id } });
   if (!item) return { error: "Item não encontrado." };
   const nextStatus = item.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-  await prisma.$transaction([
-    prisma.item.update({ where: { id: item.id }, data: { status: nextStatus } }),
-    prisma.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: `catalog.item.${nextStatus === "ACTIVE" ? "activated" : "inactivated"}`, entityType: "item", entityId: item.id } }),
-  ]);
+  const result = await prisma.$transaction(async (tx) => {
+    if (nextStatus === "ACTIVE") {
+      const usage = await consumeUsageLimit(tx, {
+        companyId: session.company.id,
+        key: "items",
+      });
+      if (!usage.allowed) return { error: usage.error };
+    }
+
+    await tx.item.updateMany({ where: { id: item.id, companyId: session.company.id }, data: { status: nextStatus } });
+    if (nextStatus === "INACTIVE") {
+      await syncUsageLimitCounter(tx, { companyId: session.company.id, key: "items" });
+    }
+    await tx.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: `catalog.item.${nextStatus === "ACTIVE" ? "activated" : "inactivated"}`, entityType: "item", entityId: item.id } });
+
+    return { success: true };
+  });
+
+  if ("error" in result) return { error: result.error };
   revalidatePath(`/dashboard/cadastros/itens/${item.id}`); revalidatePath(`/dashboard/itens/${item.id}`); revalidatePath("/dashboard/itens"); revalidatePath("/dashboard/cadastros");
   return { success: nextStatus === "ACTIVE" ? "Item ativado." : "Item inativado." };
 }
@@ -224,7 +248,7 @@ export async function toggleUnitConversionAction(_state: CatalogActionState, for
   if (!conversion) return { error: "Conversão não encontrada." };
   const nextStatus = conversion.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
   await prisma.$transaction([
-    prisma.itemUnitConversion.update({ where: { id: conversion.id }, data: { status: nextStatus } }),
+    prisma.itemUnitConversion.updateMany({ where: { id: conversion.id, companyId: session.company.id }, data: { status: nextStatus } }),
     prisma.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: `catalog.unit_conversion.${nextStatus === "ACTIVE" ? "activated" : "inactivated"}`, entityType: "item_unit_conversion", entityId: conversion.id } }),
   ]);
   revalidatePath(`/dashboard/cadastros/itens/${conversion.itemId}`);

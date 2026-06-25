@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requirePermission } from "@/lib/auth/session";
+import { requirePermission, requireSession } from "@/lib/auth/session";
 import { customerOrderSchema } from "@/lib/orders/validation";
+import { dispatchCustomerOrder } from "@/lib/orders/shipment";
 import { isWholeQuantity } from "@/lib/stock/quantity";
 import { prisma } from "@/lib/prisma";
 
@@ -62,11 +63,32 @@ export async function changeOrderStatusAction(
   _state: OrderActionState,
   formData: FormData,
 ): Promise<OrderActionState> {
-  const session = await requirePermission("order.change_status");
+  const session = await requireSession();
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "");
   const allowed = ["OPEN", "APPROVED", "IN_PRODUCTION", "READY", "SHIPPED", "CANCELED"];
   if (!allowed.includes(status)) return { error: "Status inválido." };
+  if (status === "SHIPPED") {
+    if (!session.permissions.has("shipment.dispatch")) {
+      return { error: "Voce nao tem permissao para expedir pedidos." };
+    }
+
+    const result = await dispatchCustomerOrder({
+      companyId: session.company.id,
+      userId: session.user.id,
+      orderId: id,
+    });
+    if ("error" in result && result.error) return { error: result.error };
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/pedidos");
+    revalidatePath("/dashboard/historico");
+    return { success: "Pedido expedido e estoque baixado." };
+  }
+
+  if (!session.permissions.has("order.change_status")) {
+    return { error: "Voce nao tem permissao para alterar status de pedidos." };
+  }
   if (status === "APPROVED" && !session.permissions.has("order.approve")) {
     return { error: "Você não tem permissão para aprovar pedidos." };
   }
@@ -78,7 +100,7 @@ export async function changeOrderStatusAction(
   if (!order) return { error: "Pedido não encontrado." };
 
   await prisma.$transaction([
-    prisma.customerOrder.update({ where: { id: order.id }, data: { status: status as never } }),
+    prisma.customerOrder.updateMany({ where: { id: order.id, companyId: session.company.id }, data: { status: status as never } }),
     prisma.auditLog.create({
       data: {
         companyId: session.company.id,
@@ -94,4 +116,3 @@ export async function changeOrderStatusAction(
   revalidatePath("/dashboard/pedidos");
   return { success: "Status do pedido atualizado." };
 }
-

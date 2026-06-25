@@ -55,7 +55,15 @@ export async function getCurrentSession() {
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashSessionToken(token) },
     include: {
-      company: true,
+      company: {
+        include: {
+          subscriptions: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { status: true },
+          },
+        },
+      },
       user: {
         include: {
           company: true,
@@ -82,7 +90,7 @@ export async function getCurrentSession() {
   if (
     !session ||
     session.expiresAt <= new Date() ||
-    !canAccessCompany(session.company.status) ||
+    !canAccessCompany(session.company.status, session.company.subscriptions[0]?.status) ||
     session.user.status !== "ACTIVE" ||
     session.user.companyId !== session.companyId
   ) {

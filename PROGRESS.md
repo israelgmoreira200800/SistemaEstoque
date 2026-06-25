@@ -4,7 +4,7 @@
 
 ## Estado geral
 
-Fase atual: **Fase 4 - Onboarding empresarial transacional**.
+Fase atual: **Fase 11 - Relatorios e exportacao CSV (concluida)**.
 
 O sistema foi refatorado para uso em uma única empresa, sem módulo de filiais. A
 complexidade de filial/depósito saiu da experiência e do modelo operacional. O MVP
@@ -21,6 +21,26 @@ geral, listagem de empresas, criacao manual e controle de status.
 A Fase 4 transforma a criacao manual em onboarding transacional: empresa,
 primeiro administrador, cargos, permissoes, setores, catalogo inicial, plano,
 assinatura, limites e auditoria nascem juntos ou nao nascem.
+A Fase 5 revisa consultas, Server Actions e relacoes sensiveis para reforcar que
+dados empresariais sejam sempre lidos e alterados dentro da empresa autenticada.
+A Fase 6 corrige o risco de corrida em saidas e consumo de producao usando
+decremento atomico condicionado ao saldo disponivel no banco.
+A Fase 7 aplica assinaturas e limites no runtime empresarial: assinaturas
+ativas/trial liberam acesso, e limites de usuarios e itens ativos bloqueiam
+novas criacoes ou reativacoes quando atingidos.
+A Fase 8 adiciona recuperacao de senha, convite de usuarios por link temporario
+e outbox local de e-mails transacionais. Tokens ficam hashados no banco; o
+conteudo de envio fica enfileirado em `email_outbox` enquanto nao ha SMTP real.
+A Fase 9 adiciona solicitacoes de ajuste e inventario com aprovacao antes de
+alterar saldo. O saldo solicitado fica pendente, e a diferenca e calculada de
+novo no momento da aprovacao para considerar movimentos ocorridos no intervalo.
+A Fase 10 liga a expedicao ao pedido: ao enviar um pedido, o sistema baixa os
+itens do estoque com decremento atomico, cria movimentos `SHIPMENT`, atualiza o
+pedido para `SHIPPED` e audita a operacao na mesma transacao.
+A Fase 11 adiciona relatorios operacionais por empresa, com indicadores,
+consultas recentes e exportacao CSV para estoque, movimentacoes, pedidos e
+producoes. As exportacoes exigem `report.export`, respeitam o `companyId` da
+sessao e registram auditoria `report.exported`.
 
 ## Concluído nesta entrega
 
@@ -73,6 +93,61 @@ assinatura, limites e auditoria nascem juntos ou nao nascem.
 - [x] Associar plano inicial, assinatura, limites de uso e evento de cobranca
   manual no onboarding.
 - [x] Registrar auditoria empresarial e auditoria da plataforma para onboarding.
+- [x] Revisar consultas e Server Actions empresariais por uso de `companyId`.
+- [x] Trocar escritas finais por `updateMany` com `companyId` em catalogo,
+  usuarios, cargos, producao e pedidos.
+- [x] Ajustar o guardiao do ultimo administrador para validar `userId` junto da
+  empresa esperada.
+- [x] Reforcar leituras relacionais de estoque, producao e pedidos para carregar
+  apenas itens vinculados a mesma empresa.
+- [x] Auditar o banco local contra vinculos cruzados entre empresas; nenhum
+  desvio encontrado.
+- [x] Criar decremento atomico de saldo com `updateMany` condicionado por
+  `companyId`, `itemId`, item ativo e `quantityOnHand >= quantidade`.
+- [x] Aplicar decremento atomico em saidas de estoque.
+- [x] Aplicar decremento atomico no consumo de componentes da producao, com
+  rollback da transacao quando algum componente nao tiver saldo.
+- [x] Revalidar produto e ficha tecnica ativa dentro da transacao de producao.
+- [x] Adicionar testes automatizados para o helper de decremento concorrente.
+- [x] Validar concorrencia real no banco: duas saidas simultaneas de 8 sobre
+  saldo 10 resultam em uma aceita, uma recusada e saldo final 2.
+- [x] Criar helper central de limites em `src/lib/billing`.
+- [x] Bloquear acesso empresarial quando a assinatura conhecida nao estiver
+  `ACTIVE` ou `TRIALING`.
+- [x] Aplicar limite de `users` para criacao e desbloqueio de usuarios ativos.
+- [x] Aplicar limite de `items` para criacao e reativacao de itens ativos.
+- [x] Sincronizar `usedValue` ao bloquear usuarios, inativar itens e rodar seed.
+- [x] Inicializar o onboarding com uso correto do primeiro administrador.
+- [x] Validar limites de uso no banco com empresa temporaria.
+- [x] Criar migration `20260624190000_account_recovery_and_invites`.
+- [x] Preparar `password_reset_tokens`, `user_invitations` e `email_outbox`.
+- [x] Adicionar `APP_URL` para compor links de recuperacao e convite.
+- [x] Implementar `/recuperar-senha`, `/redefinir-senha` e `/aceitar-convite`.
+- [x] Alterar criacao de usuario para convite com usuario `BLOCKED` ate aceite.
+- [x] Permitir reenvio de convite e invalidar convites anteriores.
+- [x] Redefinir senha com token de uso unico, expiracao e revogacao de sessoes.
+- [x] Validar fluxo real no banco com reset, convite, aceite e bloqueio de reuso.
+- [x] Criar migration `20260624200000_stock_adjustment_approvals`.
+- [x] Preparar `stock_adjustment_requests` com status de revisao.
+- [x] Implementar `/dashboard/ajustes` para solicitacao, pendencias e revisoes.
+- [x] Aplicar ajuste/inventario apenas apos `stock.adjust_approve`.
+- [x] Recalcular a diferenca contra o saldo atual no momento da aprovacao.
+- [x] Criar movimento `ADJUSTMENT` ou `INVENTORY` e auditoria ao aprovar.
+- [x] Permitir rejeicao auditada sem alterar saldo.
+- [x] Adicionar testes de validacao e calculo de delta de ajuste.
+- [x] Implementar expedicao de pedido com baixa automatica de estoque.
+- [x] Criar movimentos `SHIPMENT` vinculados ao `customer_order`.
+- [x] Bloquear reexpedicao de pedido ja enviado ou cancelado.
+- [x] Bloquear expedicao sem saldo suficiente, mantendo pedido e estoque intactos.
+- [x] Permitir perfil de Expedicao expedir sem depender de `order.change_status`.
+- [x] Validar expedicao real no banco com baixa, movimento, bloqueio de reuso e rollback por falta de saldo.
+- [x] Criar `/dashboard/relatorios` com indicadores de estoque, pedidos,
+  movimentacoes e producao.
+- [x] Adicionar exportacao CSV em `/dashboard/relatorios/export`.
+- [x] Proteger leitura por `report.view` e exportacao por `report.export`.
+- [x] Filtrar todos os relatorios pela empresa autenticada.
+- [x] Auditar exportacoes com `report.exported`.
+- [x] Adicionar helper testado para geracao de CSV.
 
 ## Tabelas atuais relevantes
 
@@ -85,6 +160,9 @@ assinatura, limites e auditoria nascem juntos ou nao nascem.
 - `subscriptions`
 - `usage_limits`
 - `billing_events`
+- `password_reset_tokens`
+- `user_invitations`
+- `email_outbox`
 - `roles`
 - `permissions`
 - `user_roles`
@@ -98,6 +176,7 @@ assinatura, limites e auditoria nascem juntos ou nao nascem.
 - `item_categories`
 - `stock_balances`
 - `stock_movements`
+- `stock_adjustment_requests`
 - `product_components`
 - `productions`
 - `customer_orders`
@@ -139,6 +218,49 @@ Usuários
 → Auditoria
 ```
 
+### Fluxo de identidade por e-mail
+
+```text
+Recuperar senha ou criar convite
+-> Gerar token opaco e salvar apenas hash
+-> Enfileirar e-mail em email_outbox
+-> Abrir link temporario
+-> Definir senha
+-> Consumir token e registrar auditoria
+```
+
+### Fluxo de ajuste e inventario
+
+```text
+Acessar Ajustes
+-> Informar item, tipo e novo saldo contado
+-> Solicitar aprovacao
+-> Revisor aprova ou rejeita
+-> Ao aprovar, recalcular diferenca contra saldo atual
+-> Atualizar saldo e registrar movimento/auditoria
+```
+
+### Fluxo de expedicao
+
+```text
+Pedido com itens
+-> Expedir
+-> Baixar saldo dos itens
+-> Criar movimentos SHIPMENT vinculados ao pedido
+-> Marcar pedido como enviado
+-> Registrar auditoria
+```
+
+### Fluxo de relatorios
+
+```text
+Relatorios
+-> Consultar indicadores e listas recentes
+-> Exportar CSV autorizado
+-> Filtrar dados pela empresa da sessao
+-> Registrar auditoria report.exported
+```
+
 ## Validações executadas
 
 - [x] `pnpm db:deploy`
@@ -151,24 +273,42 @@ Usuários
 - [x] `pnpm build`
 - [x] `pnpm audit --prod`
 - [x] `pnpm exec prisma migrate status`
+- [x] auditoria SQL de isolamento multiempresa
+- [x] teste real de concorrencia em saida de estoque
+- [x] teste real de limites de uso em banco
+- [x] teste real de recuperacao de senha e convite em banco
+- [x] teste real de ajuste aprovado em banco
+- [x] teste real de expedicao com baixa automatica em banco
 
 Resultado:
 
-- 5 migrations aplicadas.
+- 7 migrations aplicadas.
 - Banco atualizado.
-- 8 arquivos de teste.
-- 24 testes aprovados.
+- 15 arquivos de teste.
+- 50 testes aprovados.
 - Build Next.js aprovado.
 - Nenhuma vulnerabilidade conhecida em produção.
+
+- Auditoria local de isolamento sem vinculos cruzados entre empresas.
+- Saida concorrente validada sem saldo negativo.
+- Limites de uso validados com bloqueio e consumo reais no banco.
+- Recuperacao de senha e convite validados com token unico, expiracao e reuso
+  bloqueado no banco.
+- Ajuste aprovado validado no banco com movimento, saldo final e rejeicao sem
+  alterar estoque.
+- Expedicao validada com baixa atomica, movimento `SHIPMENT`, bloqueio de
+  reexpedicao e rollback quando nao ha saldo.
 
 ## Como testar perfis
 
 1. Entre como `admin@exemplo.com`.
 2. Acesse **Usuários**.
-3. Crie um usuário com senha inicial de pelo menos 12 caracteres.
+3. Crie um convite de usuario.
 4. Atribua um dos cargos iniciais.
-5. Faça logout e entre com o novo usuário.
-6. Confira menu e ações disponíveis.
+5. Copie o link enfileirado em `email_outbox` para aceitar o convite enquanto
+   nao houver SMTP real.
+6. Defina a senha, faca logout e entre com o novo usuario.
+7. Confira menu e acoes disponiveis.
 
 Perfis esperados:
 
@@ -187,11 +327,5 @@ Teste importante:
 
 ## Próximos incrementos recomendados
 
-- Fase 5: revisão completa de isolamento por `companyId`.
-- Fase 6: correção de concorrência em estoque e produção.
-- Recuperação de senha.
-- Convite por e-mail.
-- Ajuste/inventário com aprovação.
-- Expedição com baixa automática vinculada ao pedido.
-- Relatórios e exportação.
-- Melhorias visuais nos formulários grandes de permissões.
+- Integracao SMTP real para entrega dos e-mails transacionais.
+- Melhorias visuais nos formularios grandes de permissoes.

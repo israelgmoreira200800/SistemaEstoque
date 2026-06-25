@@ -3,10 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/session";
 import { productComponentSchema, productionSchema } from "@/lib/production/validation";
+import { decrementStockBalance } from "@/lib/stock/service";
 import { isWholeQuantity, multiplyQuantity, toNumber } from "@/lib/stock/quantity";
 import { prisma } from "@/lib/prisma";
 
 export type ProductionActionState = { success?: string; error?: string };
+
+class ProductionStockError extends Error {}
 
 export async function saveComponentAction(
   _state: ProductionActionState,
@@ -70,7 +73,7 @@ export async function inactivateComponentAction(
   if (!component) return { error: "Componente não encontrado." };
 
   await prisma.$transaction([
-    prisma.productComponent.update({ where: { id: component.id }, data: { status: "INACTIVE" } }),
+    prisma.productComponent.updateMany({ where: { id: component.id, companyId: session.company.id }, data: { status: "INACTIVE" } }),
     prisma.auditLog.create({
       data: {
         companyId: session.company.id,
@@ -104,7 +107,13 @@ export async function finishProductionAction(
   }
 
   const components = await prisma.productComponent.findMany({
-    where: { companyId: session.company.id, productId: product.id, status: "ACTIVE" },
+    where: {
+      companyId: session.company.id,
+      productId: product.id,
+      status: "ACTIVE",
+      product: { companyId: session.company.id },
+      componentItem: { companyId: session.company.id },
+    },
     include: {
       componentItem: { include: { unit: true, stockBalance: true } },
     },
@@ -121,74 +130,106 @@ export async function finishProductionAction(
     }
   }
 
-  await prisma.$transaction(async (tx) => {
-    const production = await tx.production.create({
-      data: {
-        companyId: session.company.id,
-        productId: product.id,
-        quantity: parsed.data.quantity,
-        createdByUserId: session.user.id,
-      },
-    });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const activeProduct = await tx.item.findFirst({
+        where: { id: product.id, companyId: session.company.id, status: "ACTIVE" },
+        select: { id: true },
+      });
+      if (!activeProduct) throw new ProductionStockError("Produto nao encontrado ou inativo.");
 
-    for (const component of components) {
-      const required = multiplyQuantity(component.quantity.toString(), parsed.data.quantity);
-      const balance = await tx.stockBalance.update({
-        where: { companyId_itemId: { companyId: session.company.id, itemId: component.componentItemId } },
-        data: { quantityOnHand: { decrement: required } },
+      const activeComponents = await tx.productComponent.findMany({
+        where: {
+          companyId: session.company.id,
+          productId: product.id,
+          status: "ACTIVE",
+          product: { companyId: session.company.id, status: "ACTIVE" },
+          componentItem: { companyId: session.company.id, status: "ACTIVE" },
+        },
+        include: { componentItem: { include: { unit: true } } },
+      });
+      if (activeComponents.length === 0) {
+        throw new ProductionStockError("Cadastre a ficha tecnica antes de produzir.");
+      }
+
+      const production = await tx.production.create({
+        data: {
+          companyId: session.company.id,
+          productId: product.id,
+          quantity: parsed.data.quantity,
+          createdByUserId: session.user.id,
+        },
+      });
+
+      for (const component of activeComponents) {
+        const required = multiplyQuantity(component.quantity.toString(), parsed.data.quantity);
+        const decrease = await decrementStockBalance(tx, {
+          companyId: session.company.id,
+          itemId: component.componentItemId,
+          quantity: required,
+        });
+        const balance = decrease.balance;
+        if (!balance) {
+          throw new ProductionStockError(
+            `Estoque insuficiente de ${component.componentItem.name}. Necessario: ${required} ${component.componentItem.unit.symbol}.`,
+          );
+        }
+
+        await tx.stockMovement.create({
+          data: {
+            companyId: session.company.id,
+            itemId: component.componentItemId,
+            type: "PRODUCTION_CONSUMPTION",
+            quantity: required,
+            balanceAfter: balance.quantityOnHand,
+            sourceType: "production",
+            sourceId: production.id,
+            createdByUserId: session.user.id,
+            metadata: { productId: product.id, productQuantity: parsed.data.quantity },
+          },
+        });
+      }
+
+      const productBalance = await tx.stockBalance.upsert({
+        where: { companyId_itemId: { companyId: session.company.id, itemId: product.id } },
+        update: { quantityOnHand: { increment: parsed.data.quantity } },
+        create: {
+          companyId: session.company.id,
+          itemId: product.id,
+          quantityOnHand: parsed.data.quantity,
+        },
       });
       await tx.stockMovement.create({
         data: {
           companyId: session.company.id,
-          itemId: component.componentItemId,
-          type: "PRODUCTION_CONSUMPTION",
-          quantity: required,
-          balanceAfter: balance.quantityOnHand,
+          itemId: product.id,
+          type: "PRODUCTION_OUTPUT",
+          quantity: parsed.data.quantity,
+          balanceAfter: productBalance.quantityOnHand,
           sourceType: "production",
           sourceId: production.id,
           createdByUserId: session.user.id,
-          metadata: { productId: product.id, productQuantity: parsed.data.quantity },
         },
       });
-    }
 
-    const productBalance = await tx.stockBalance.upsert({
-      where: { companyId_itemId: { companyId: session.company.id, itemId: product.id } },
-      update: { quantityOnHand: { increment: parsed.data.quantity } },
-      create: {
-        companyId: session.company.id,
-        itemId: product.id,
-        quantityOnHand: parsed.data.quantity,
-      },
+      await tx.auditLog.create({
+        data: {
+          companyId: session.company.id,
+          userId: session.user.id,
+          action: "production.finished",
+          entityType: "production",
+          entityId: production.id,
+          metadata: { productId: product.id, quantity: parsed.data.quantity },
+        },
+      });
     });
-    await tx.stockMovement.create({
-      data: {
-        companyId: session.company.id,
-        itemId: product.id,
-        type: "PRODUCTION_OUTPUT",
-        quantity: parsed.data.quantity,
-        balanceAfter: productBalance.quantityOnHand,
-        sourceType: "production",
-        sourceId: production.id,
-        createdByUserId: session.user.id,
-      },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        companyId: session.company.id,
-        userId: session.user.id,
-        action: "production.finished",
-        entityType: "production",
-        entityId: production.id,
-        metadata: { productId: product.id, quantity: parsed.data.quantity },
-      },
-    });
-  });
+  } catch (error) {
+    if (error instanceof ProductionStockError) return { error: error.message };
+    throw error;
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/producao");
   revalidatePath("/dashboard/historico");
   return { success: "Produção registrada. Componentes baixados e produto acabado adicionado ao estoque." };
 }
-

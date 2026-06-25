@@ -16,6 +16,39 @@ type StockMovementInput = {
   metadata?: Prisma.InputJsonValue;
 };
 
+export type StockBalanceDecreaseInput = {
+  companyId: string;
+  itemId: string;
+  quantity: string;
+};
+
+export async function decrementStockBalance(
+  tx: Prisma.TransactionClient,
+  input: StockBalanceDecreaseInput,
+) {
+  const updated = await tx.stockBalance.updateMany({
+    where: {
+      companyId: input.companyId,
+      itemId: input.itemId,
+      item: { companyId: input.companyId, status: "ACTIVE" },
+      quantityOnHand: { gte: input.quantity },
+    },
+    data: { quantityOnHand: { decrement: input.quantity } },
+  });
+
+  if (updated.count !== 1) {
+    return { error: "Estoque insuficiente para esta saida." };
+  }
+
+  const balance = await tx.stockBalance.findUnique({
+    where: { companyId_itemId: { companyId: input.companyId, itemId: input.itemId } },
+  });
+
+  if (!balance) return { error: "Saldo de estoque nao encontrado." };
+
+  return { balance };
+}
+
 export async function registerStockIncrease(input: StockMovementInput) {
   const item = await prisma.item.findFirst({
     where: { id: input.itemId, companyId: input.companyId, status: "ACTIVE" },
@@ -88,10 +121,13 @@ export async function registerStockDecrease(input: StockMovementInput) {
   }
 
   const movement = await prisma.$transaction(async (tx) => {
-    const balance = await tx.stockBalance.update({
-      where: { companyId_itemId: { companyId: input.companyId, itemId: input.itemId } },
-      data: { quantityOnHand: { decrement: input.quantity } },
+    const decrease = await decrementStockBalance(tx, {
+      companyId: input.companyId,
+      itemId: input.itemId,
+      quantity: input.quantity,
     });
+    const balance = decrease.balance;
+    if (!balance) return { error: decrease.error };
 
     const created = await tx.stockMovement.create({
       data: {
@@ -120,8 +156,8 @@ export async function registerStockDecrease(input: StockMovementInput) {
       },
     });
 
-    return created;
+    return { movement: created };
   });
 
-  return { movement };
+  return movement;
 }

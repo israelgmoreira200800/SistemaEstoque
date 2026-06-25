@@ -15,16 +15,22 @@ auditoria da plataforma, login separado em `/platform/login`, painel minimo em
 Implementado:
 
 - login com sessão HTTP-only e bloqueio temporário por falhas;
+- recuperacao de senha com token temporario e outbox local de e-mail;
 - dashboard como primeira tela após login;
 - cadastro de itens, unidades e categorias;
 - entradas e saídas com atualização de estoque;
+- ajuste e inventario por solicitacao, aprovacao e auditoria;
 - histórico de movimentações;
 - fichas técnicas simples;
 - produção com baixa automática de componentes e entrada do produto acabado;
 - pedidos simples com status;
+- expedicao de pedido com baixa automatica de estoque e movimento vinculado;
+- relatorios operacionais com exportacao CSV de estoque, movimentacoes, pedidos
+  e producoes;
 - usuários, setores operacionais, cargos e permissões granulares;
+- convite de usuarios por link temporario, com aceite e definicao de senha;
 - permissões individuais por usuário com concessão ou negação;
-- auditoria para login, estoque, pedidos, produção, usuários, cargos e permissões;
+- auditoria para login, estoque, pedidos, produção, relatorios, usuários, cargos e permissões;
 - proteção de backend em Server Actions e rotas;
 - preparacao do dominio SaaS com empresas, planos manuais, assinaturas, limites
   e entidades de operadores da plataforma;
@@ -33,6 +39,11 @@ Implementado:
   vida das empresas;
 - criacao transacional de tenant, primeiro administrador, cargos padrao,
   setores, catalogo inicial, plano, assinatura, limites e auditoria;
+- revisao de isolamento multiempresa em Server Actions, leituras relacionais e
+  escritas empresariais;
+- decremento atomico de saldo para saidas e consumo de producao, evitando saldo
+  negativo em concorrencia;
+- aplicacao runtime de assinatura ativa/trial e limites de usuarios/itens ativos;
 - migration versionada e seed idempotente.
 
 ## Executar localmente
@@ -49,6 +60,9 @@ pnpm dev
 ```
 
 Abra `http://localhost:3000`.
+
+Mantenha `APP_URL="http://localhost:3000"` no `.env` local para que links de
+recuperacao de senha e convite sejam gerados corretamente.
 
 Credenciais criadas pelo `.env` atual:
 
@@ -88,7 +102,7 @@ permissões e definir permissões individuais por usuário.
 Estoque:
 
 ```text
-Login → Dashboard → Itens → Entradas/Saídas → Estoque atualizado → Histórico
+Login → Dashboard → Itens → Entradas/Saídas/Ajustes → Estoque atualizado → Histórico
 ```
 
 Produção:
@@ -96,6 +110,18 @@ Produção:
 ```text
 Produto → Ficha técnica → Quantidade produzida → Componentes necessários
 → Confirmar produção → Baixa dos componentes → Entrada do produto acabado
+```
+
+Expedicao:
+
+```text
+Pedido → Expedir → Baixa automatica do estoque → Movimento SHIPMENT → Pedido enviado
+```
+
+Relatorios:
+
+```text
+Relatorios → Indicadores operacionais → Exportacao CSV autorizada → Auditoria
 ```
 
 Permissões:
@@ -122,3 +148,11 @@ Usuários → Cargos → Permissões do cargo → Overrides individuais → Audi
 6. Toda alteração relevante gera auditoria.
 7. Toda movimentação de estoque atualiza saldo e cria histórico.
 8. Produção consome componentes e gera produto acabado na mesma transação.
+9. Saidas e consumo de producao dependem de decremento atomico com saldo suficiente.
+10. Assinaturas e limites de uso sao aplicados no backend.
+11. Tokens de recuperacao e convite sao persistidos apenas como hash.
+12. Convites ativam usuario somente apos senha definida e limite de usuarios validado.
+13. Ajustes e inventario so alteram saldo apos aprovacao autorizada.
+14. Expedicao de pedido baixa estoque e registra movimento na mesma transacao.
+15. Exportacoes de relatorios exigem permissao no backend e usam somente dados
+    da empresa autenticada.

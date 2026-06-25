@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { ArrowRight, LockKeyhole, Mail } from "lucide-react";
 import { loginAction, type LoginActionState } from "./actions";
@@ -36,7 +37,7 @@ export function LoginForm() {
       <div className="field-group">
         <div className="label-row">
           <label htmlFor="password">Senha</label>
-          <span className="muted-link" aria-disabled="true">Recuperação em breve</span>
+          <Link className="muted-link" href="/recuperar-senha">Recuperar senha</Link>
         </div>
         <div className="field-control">
           <LockKeyhole aria-hidden="true" size={18} />
@@ -71,4 +72,3 @@ export function LoginForm() {
     </form>
   );
 }
-

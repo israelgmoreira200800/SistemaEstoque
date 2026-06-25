@@ -14,7 +14,7 @@ export default async function ExitsPage() {
       orderBy: { name: "asc" },
     }),
     prisma.stockMovement.findMany({
-      where: { companyId: session.company.id, type: "EXIT" },
+      where: { companyId: session.company.id, type: "EXIT", item: { companyId: session.company.id } },
       include: { item: { include: { unit: true } }, createdBy: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -49,4 +49,3 @@ export default async function ExitsPage() {
     </>
   );
 }
-

@@ -14,7 +14,7 @@ export default async function EntriesPage() {
       orderBy: { name: "asc" },
     }),
     prisma.stockMovement.findMany({
-      where: { companyId: session.company.id, type: "ENTRY" },
+      where: { companyId: session.company.id, type: "ENTRY", item: { companyId: session.company.id } },
       include: { item: { include: { unit: true } }, createdBy: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -49,4 +49,3 @@ export default async function EntriesPage() {
     </>
   );
 }
-

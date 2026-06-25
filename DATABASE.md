@@ -19,10 +19,13 @@ Não há filiais nem depósitos no MVP. O estoque é principal e único.
 - `plans`: planos manuais preparados para SaaS.
 - `plan_features`: recursos e limites declarativos de cada plano.
 - `subscriptions`: assinatura atual/histórica de uma empresa.
-- `usage_limits`: limites manuais por empresa.
+- `usage_limits`: limites manuais por empresa, aplicados em runtime.
 - `billing_events`: eventos de cobrança ou plano, sem cobrança real nesta fase.
 - `users`: usuários da empresa, com status `ACTIVE` ou `BLOCKED`.
 - `sessions`: sessões revogáveis; guarda hash do token, usuário e empresa.
+- `password_reset_tokens`: tokens hashados de recuperacao de senha.
+- `user_invitations`: convites hashados para aceite e definicao de senha.
+- `email_outbox`: fila local de e-mails transacionais enquanto nao ha SMTP real.
 - `audit_logs`: trilha de auditoria.
 
 ### Cargos e permissões
@@ -55,6 +58,7 @@ Prioridade de autorização:
 - `stock_balances`: saldo atual por item.
 - `stock_movements`: histórico imutável de entradas, saídas, perdas, ajustes,
   inventário, consumo de produção e produto produzido.
+- `stock_adjustment_requests`: solicitacoes de ajuste/inventario com aprovacao.
 
 ### Produção
 
@@ -75,6 +79,8 @@ Migrations aplicadas:
 3. `20260623001632_organization_and_conversions`
 4. `20260623010000_single_company_rbac_stock_mvp`
 5. `20260624090000_saas_domain_preparation`
+6. `20260624190000_account_recovery_and_invites`
+7. `20260624200000_stock_adjustment_approvals`
 
 A quarta migration aposenta `company_users`, `company_user_roles`, `branches` e
 `warehouses`, faz backfill para `users.company_id`, cria `user_roles`,
@@ -84,10 +90,20 @@ A quinta migration prepara o domínio SaaS com novos status de empresa, dados de
 trial e plano atual, operadores/sessões/auditoria da plataforma e estrutura
 manual inicial de planos, assinaturas, limites e eventos de cobrança.
 
+A sexta migration adiciona recuperacao de senha, convite de usuarios e outbox
+local de e-mails transacionais, usando tokens opacos armazenados apenas como
+hash.
+
+A setima migration adiciona solicitacoes de ajuste e inventario com revisao,
+status, saldo de referencia, saldo solicitado, delta aplicado e vinculo opcional
+ao movimento de estoque gerado na aprovacao.
+
 ## Invariantes
 
 - Usuário bloqueado não mantém sessão válida.
 - Empresa `SUSPENDED` ou `CANCELLED` não permite acesso empresarial.
+- Assinatura conhecida precisa estar `TRIALING` ou `ACTIVE` para liberar acesso
+  empresarial.
 - Operador da plataforma não pertence a `users`, cargos ou permissões empresariais.
 - Cargos não são apagados em fluxo comum; são inativados.
 - Permissões individuais são explícitas e auditadas.
@@ -95,7 +111,28 @@ manual inicial de planos, assinaturas, limites e eventos de cobrança.
 - SKU e código de barras são únicos dentro da empresa.
 - Onboarding empresarial cria tenant, primeiro usuario administrador, cargos,
   setores, catalogo inicial, assinatura, limites e auditorias em transacao unica.
+- Consultas relacionais sensiveis devem validar tambem a empresa dos itens
+  associados, como componentes de producao, itens de pedido e movimentos de
+  estoque.
 - Quantidades usam `Decimal(18, 6)`.
 - Saldo disponível é derivado de físico, reservado e bloqueado.
+- Saidas de estoque e consumo de producao so reduzem saldo com decremento
+  atomico condicionado a saldo suficiente.
+- Ajustes e inventario pendentes nao alteram saldo.
+- Aprovacao de ajuste/inventario recalcula a diferenca contra o saldo atual,
+  cria movimento `ADJUSTMENT` ou `INVENTORY` e registra auditoria na mesma
+  transacao.
+- Expedicao de pedido cria movimento `SHIPMENT` vinculado ao `customer_order`,
+  baixa estoque com decremento atomico e marca o pedido como `SHIPPED` na mesma
+  transacao.
+- Relatorios e exportacoes CSV sao leituras filtradas por `company_id`; a
+  exportacao registra auditoria, mas nao altera dados operacionais.
+- `usage_limits` controla usuarios e itens ativos no runtime; criacao e
+  reativacao consomem limite, bloqueio/inativacao sincronizam o uso.
+- Tokens de recuperacao de senha e convite sao de uso unico, expiram e ficam
+  persistidos apenas como hash.
+- Aceite de convite consome o limite de usuarios antes de ativar a conta.
+- `email_outbox` guarda o conteudo necessario para entrega enquanto nao existe
+  provedor SMTP integrado; nao substitui auditoria.
 - Movimentações confirmadas não são editadas pela aplicação.
 - Entrada, saída e produção gravam movimento e auditoria em transação.
