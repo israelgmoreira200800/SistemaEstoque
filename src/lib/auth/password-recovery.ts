@@ -2,6 +2,7 @@ import { canAccessCompany } from "@/lib/auth/company-access";
 import { createAccountToken, addMinutes, hashAccountToken, isExpired } from "@/lib/auth/account-tokens";
 import { hashPassword, normalizeEmail } from "@/lib/auth/password";
 import { enqueueEmail, buildTokenUrl } from "@/lib/email/outbox";
+import { deliverOutboxEmail } from "@/lib/email/smtp";
 import { prisma } from "@/lib/prisma";
 
 const PASSWORD_RESET_MINUTES = 30;
@@ -42,7 +43,7 @@ export async function requestPasswordReset(emailInput: string): Promise<Password
   const expiresAt = addMinutes(now, PASSWORD_RESET_MINUTES);
   const resetUrl = buildTokenUrl("/redefinir-senha", token);
 
-  await prisma.$transaction(async (tx) => {
+  const emailMessage = await prisma.$transaction(async (tx) => {
     await tx.passwordResetToken.updateMany({
       where: { userId: user.id, usedAt: null },
       data: { usedAt: now },
@@ -57,7 +58,7 @@ export async function requestPasswordReset(emailInput: string): Promise<Password
       },
     });
 
-    const emailMessage = await enqueueEmail(tx, {
+    const queuedEmail = await enqueueEmail(tx, {
       companyId: user.companyId,
       userId: user.id,
       recipientEmail: user.email,
@@ -81,10 +82,14 @@ export async function requestPasswordReset(emailInput: string): Promise<Password
         action: "auth.password_reset.requested",
         entityType: "password_reset_token",
         entityId: resetToken.id,
-        metadata: { emailOutboxId: emailMessage.id, expiresAt: expiresAt.toISOString() },
+        metadata: { emailOutboxId: queuedEmail.id, expiresAt: expiresAt.toISOString() },
       },
     });
+
+    return queuedEmail;
   });
+
+  await deliverOutboxEmail(emailMessage);
 
   return { success: true, message: PASSWORD_RESET_REQUEST_MESSAGE };
 }

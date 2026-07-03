@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import {
   destroyCurrentPlatformSession,
   getCurrentPlatformSession,
-  requirePlatformSession,
 } from "@/lib/auth/platform-session";
+import { PLATFORM_COMPANY_MANAGEMENT_ROLES, requirePlatformRole } from "@/lib/auth/platform-roles";
 import { hashPassword } from "@/lib/auth/password";
 import { createCompanyOnboarding, slugifyTenant } from "@/lib/organization/onboarding";
 import {
@@ -37,7 +37,9 @@ export async function createPlatformCompanyAction(
   _state: PlatformCompanyActionState,
   formData: FormData,
 ): Promise<PlatformCompanyActionState> {
-  const session = await requirePlatformSession();
+  const roleCheck = await requirePlatformRole(PLATFORM_COMPANY_MANAGEMENT_ROLES);
+  if ("error" in roleCheck) return { error: roleCheck.error };
+  const { session } = roleCheck;
   const parsed = platformCompanySchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados invalidos." };
 
@@ -88,7 +90,9 @@ export async function changePlatformCompanyStatusAction(
   _state: PlatformCompanyActionState,
   formData: FormData,
 ): Promise<PlatformCompanyActionState> {
-  const session = await requirePlatformSession();
+  const roleCheck = await requirePlatformRole(PLATFORM_COMPANY_MANAGEMENT_ROLES);
+  if ("error" in roleCheck) return { error: roleCheck.error };
+  const { session } = roleCheck;
   const parsed = platformCompanyStatusSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados invalidos." };
 

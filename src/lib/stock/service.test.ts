@@ -63,3 +63,57 @@ describe("decrementStockBalance", () => {
     expect(findUnique).not.toHaveBeenCalled();
   });
 });
+
+describe("reserved stock helpers", () => {
+  it("libera reserva apenas quando ha quantidade reservada suficiente", async () => {
+    process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/test";
+    const { releaseReservedStockBalance } = await import("./service");
+    const { tx, updateMany, findUnique } = createTransactionClient(1);
+
+    const result = await releaseReservedStockBalance(tx, {
+      companyId: "company-1",
+      itemId: "item-1",
+      quantity: "2",
+    });
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        companyId: "company-1",
+        itemId: "item-1",
+        quantityReserved: { gte: "2" },
+      },
+      data: { quantityReserved: { decrement: "2" } },
+    });
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { companyId_itemId: { companyId: "company-1", itemId: "item-1" } },
+    });
+    expect("balance" in result).toBe(true);
+  });
+
+  it("baixa estoque expedido consumindo reserva atomica", async () => {
+    process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/test";
+    const { shipReservedStockBalance } = await import("./service");
+    const { tx, updateMany } = createTransactionClient(1);
+
+    const result = await shipReservedStockBalance(tx, {
+      companyId: "company-1",
+      itemId: "item-1",
+      quantity: "2",
+    });
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        companyId: "company-1",
+        itemId: "item-1",
+        item: { companyId: "company-1", status: "ACTIVE" },
+        quantityOnHand: { gte: "2" },
+        quantityReserved: { gte: "2" },
+      },
+      data: {
+        quantityOnHand: { decrement: "2" },
+        quantityReserved: { decrement: "2" },
+      },
+    });
+    expect("balance" in result).toBe(true);
+  });
+});

@@ -64,6 +64,20 @@ Abra `http://localhost:3000`.
 Mantenha `APP_URL="http://localhost:3000"` no `.env` local para que links de
 recuperacao de senha e convite sejam gerados corretamente.
 
+Para envio real de recuperacao de senha e convites, configure SMTP:
+
+```env
+SMTP_HOST="smtp.seudominio.com"
+SMTP_PORT="587"
+SMTP_SECURE="false"
+SMTP_USER="usuario"
+SMTP_PASSWORD="senha-ou-app-password"
+SMTP_FROM="Vertice <no-reply@seudominio.com>"
+```
+
+Sem SMTP configurado, as mensagens continuam registradas em `email_outbox` como
+pendentes para inspeção operacional.
+
 Credenciais criadas pelo `.env` atual:
 
 - e-mail: `admin@exemplo.com`

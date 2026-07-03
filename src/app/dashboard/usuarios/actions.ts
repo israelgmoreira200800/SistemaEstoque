@@ -7,6 +7,7 @@ import { wouldAffectLastPermissionManager } from "@/lib/auth/admin-guards";
 import { createAccountToken } from "@/lib/auth/account-tokens";
 import { hashPassword, normalizeEmail } from "@/lib/auth/password";
 import { consumeUsageLimit, syncUsageLimitCounter } from "@/lib/billing/usage-limits";
+import { deliverOutboxEmail } from "@/lib/email/smtp";
 import { createRoleSchema, createSectorSchema, inviteUserSchema } from "@/lib/users/validation";
 import { createUserInvitation } from "@/lib/users/invitations";
 import { prisma } from "@/lib/prisma";
@@ -53,7 +54,7 @@ export async function createUserAction(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const emailMessage = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           companyId: session.company.id,
@@ -82,7 +83,10 @@ export async function createUserAction(
           metadata: { roleId, sectorId, invitationId: invitation.id, emailOutboxId: emailMessage.id },
         },
       });
+
+      return emailMessage;
     });
+    await deliverOutboxEmail(emailMessage);
   } catch (error) {
     return { error: isUniqueError(error) ? "Já existe usuário com esse e-mail." : "Não foi possível criar o usuário." };
   }
@@ -151,7 +155,7 @@ export async function resendUserInviteAction(
   if (!user) return { error: "Usuario nao encontrado." };
   if (user.status !== "BLOCKED") return { error: "Apenas usuarios bloqueados podem receber novo convite." };
 
-  await prisma.$transaction(async (tx) => {
+  const emailMessage = await prisma.$transaction(async (tx) => {
     const { invitation, emailMessage } = await createUserInvitation(tx, {
       companyId: session.company.id,
       userId: user.id,
@@ -169,7 +173,10 @@ export async function resendUserInviteAction(
         metadata: { invitationId: invitation.id, emailOutboxId: emailMessage.id },
       },
     });
+
+    return emailMessage;
   });
+  await deliverOutboxEmail(emailMessage);
 
   revalidatePath("/dashboard/usuarios");
   return { success: "Convite reenviado e e-mail enfileirado." };

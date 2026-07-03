@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { decrementStockBalance } from "@/lib/stock/service";
+import { shipReservedStockBalance } from "@/lib/stock/service";
 import type { CustomerOrderStatus } from "@/generated/prisma/enums";
 
 type DispatchCustomerOrderInput = {
@@ -19,8 +19,15 @@ function shipmentError(message: string): never {
   throw new ShipmentError(message);
 }
 
+export const DISPATCHABLE_ORDER_STATUSES = [
+  "OPEN",
+  "APPROVED",
+  "IN_PRODUCTION",
+  "READY",
+] as const satisfies readonly CustomerOrderStatus[];
+
 export function canDispatchCustomerOrder(status: CustomerOrderStatus) {
-  return status !== "CANCELED" && status !== "SHIPPED";
+  return DISPATCHABLE_ORDER_STATUSES.includes(status as (typeof DISPATCHABLE_ORDER_STATUSES)[number]);
 }
 
 export async function dispatchCustomerOrder(input: DispatchCustomerOrderInput) {
@@ -42,13 +49,26 @@ export async function dispatchCustomerOrder(input: DispatchCustomerOrderInput) {
       }
       if (order.items.length === 0) shipmentError("Pedido sem itens para expedicao.");
 
+      const claimed = await tx.customerOrder.updateMany({
+        where: {
+          id: order.id,
+          companyId: input.companyId,
+          status: order.status,
+        },
+        data: { status: "SHIPPED" },
+      });
+
+      if (claimed.count !== 1) {
+        shipmentError("Pedido cancelado ou ja expedido nao pode ser expedido novamente.");
+      }
+
       const movements: string[] = [];
       for (const orderItem of order.items) {
         if (orderItem.item.status !== "ACTIVE") {
           shipmentError("Pedido possui item inativo.");
         }
 
-        const decrease = await decrementStockBalance(tx, {
+        const decrease = await shipReservedStockBalance(tx, {
           companyId: input.companyId,
           itemId: orderItem.itemId,
           quantity: orderItem.quantity.toString(),
@@ -79,9 +99,8 @@ export async function dispatchCustomerOrder(input: DispatchCustomerOrderInput) {
         movements.push(movement.id);
       }
 
-      const updated = await tx.customerOrder.update({
+      const updated = await tx.customerOrder.findUniqueOrThrow({
         where: { id: order.id },
-        data: { status: "SHIPPED" },
       });
 
       await tx.auditLog.create({

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isWholeQuantity, toNumber } from "@/lib/stock/quantity";
 import type { StockMovementType } from "@/generated/prisma/enums";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma, type StockBalance } from "@/generated/prisma/client";
 
 type StockMovementInput = {
   companyId: string;
@@ -22,6 +22,84 @@ export type StockBalanceDecreaseInput = {
   quantity: string;
 };
 
+async function findBalance(
+  tx: Prisma.TransactionClient,
+  input: { companyId: string; itemId: string },
+) {
+  return tx.stockBalance.findUnique({
+    where: { companyId_itemId: { companyId: input.companyId, itemId: input.itemId } },
+  });
+}
+
+export async function reserveStockBalance(
+  tx: Prisma.TransactionClient,
+  input: StockBalanceDecreaseInput,
+) {
+  const rows = await tx.$queryRaw<StockBalance[]>(Prisma.sql`
+    UPDATE "stock_balances"
+    SET
+      "quantity_reserved" = "quantity_reserved" + ${input.quantity}::numeric,
+      "updated_at" = NOW()
+    WHERE "company_id" = ${input.companyId}
+      AND "item_id" = ${input.itemId}
+      AND ("quantity_on_hand" - "quantity_reserved" - "quantity_blocked") >= ${input.quantity}::numeric
+    RETURNING *
+  `);
+
+  const balance = rows[0];
+  if (!balance) return { error: "Estoque disponivel insuficiente para reservar." };
+  return { balance };
+}
+
+export async function releaseReservedStockBalance(
+  tx: Prisma.TransactionClient,
+  input: StockBalanceDecreaseInput,
+) {
+  const updated = await tx.stockBalance.updateMany({
+    where: {
+      companyId: input.companyId,
+      itemId: input.itemId,
+      quantityReserved: { gte: input.quantity },
+    },
+    data: { quantityReserved: { decrement: input.quantity } },
+  });
+
+  if (updated.count !== 1) {
+    return { error: "Reserva de estoque nao encontrada ou insuficiente." };
+  }
+
+  const balance = await findBalance(tx, input);
+  if (!balance) return { error: "Saldo de estoque nao encontrado." };
+  return { balance };
+}
+
+export async function shipReservedStockBalance(
+  tx: Prisma.TransactionClient,
+  input: StockBalanceDecreaseInput,
+) {
+  const updated = await tx.stockBalance.updateMany({
+    where: {
+      companyId: input.companyId,
+      itemId: input.itemId,
+      item: { companyId: input.companyId, status: "ACTIVE" },
+      quantityOnHand: { gte: input.quantity },
+      quantityReserved: { gte: input.quantity },
+    },
+    data: {
+      quantityOnHand: { decrement: input.quantity },
+      quantityReserved: { decrement: input.quantity },
+    },
+  });
+
+  if (updated.count !== 1) {
+    return { error: "Estoque reservado insuficiente para expedir o pedido." };
+  }
+
+  const balance = await findBalance(tx, input);
+  if (!balance) return { error: "Saldo de estoque nao encontrado." };
+  return { balance };
+}
+
 export async function decrementStockBalance(
   tx: Prisma.TransactionClient,
   input: StockBalanceDecreaseInput,
@@ -40,9 +118,7 @@ export async function decrementStockBalance(
     return { error: "Estoque insuficiente para esta saida." };
   }
 
-  const balance = await tx.stockBalance.findUnique({
-    where: { companyId_itemId: { companyId: input.companyId, itemId: input.itemId } },
-  });
+  const balance = await findBalance(tx, input);
 
   if (!balance) return { error: "Saldo de estoque nao encontrado." };
 

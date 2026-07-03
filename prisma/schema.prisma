@@ -324,6 +324,7 @@ model User {
   customerOrders            CustomerOrder[]
 
   @@index([companyId, status, name])
+  @@unique([companyId, id])
   @@map("users")
 }
 
@@ -342,6 +343,7 @@ model Role {
   users       UserRole[]
 
   @@unique([companyId, slug])
+  @@unique([companyId, id])
   @@index([companyId, status, name])
   @@map("roles")
 }
@@ -412,6 +414,7 @@ model Sector {
   users       UserSector[]
 
   @@unique([companyId, name])
+  @@unique([companyId, id])
   @@index([companyId, status, name])
   @@map("sectors")
 }
@@ -442,6 +445,7 @@ model Unit {
   conversionsAsSource ItemUnitConversion[]
 
   @@unique([companyId, symbol])
+  @@unique([companyId, id])
   @@index([companyId, status, name])
   @@map("units")
 }
@@ -457,6 +461,7 @@ model ItemCategory {
   items     Item[]
 
   @@unique([companyId, name])
+  @@unique([companyId, id])
   @@index([companyId, status, name])
   @@map("item_categories")
 }
@@ -478,8 +483,8 @@ model Item {
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
   company                 Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  unit                    Unit                     @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  category                ItemCategory?            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  unit                    Unit                     @relation(fields: [companyId, unitId], references: [companyId, id], onDelete: Restrict)
+  category                ItemCategory?            @relation(fields: [companyId, categoryId], references: [companyId, id], onDelete: Restrict)
   unitConversions         ItemUnitConversion[]
   stockBalance            StockBalance?
   stockMovements          StockMovement[]
@@ -491,6 +496,7 @@ model Item {
 
   @@unique([companyId, sku])
   @@unique([companyId, barcode])
+  @@unique([companyId, id])
   @@index([companyId, status, name])
   @@index([companyId, type])
   @@map("items")
@@ -506,8 +512,8 @@ model ItemUnitConversion {
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
   company           Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  item              Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
-  sourceUnit        Unit          @relation(fields: [sourceUnitId], references: [id], onDelete: Restrict)
+  item              Item          @relation(fields: [companyId, itemId], references: [companyId, id], onDelete: Restrict)
+  sourceUnit        Unit          @relation(fields: [companyId, sourceUnitId], references: [companyId, id], onDelete: Restrict)
 
   @@unique([companyId, itemId, sourceUnitId])
   @@index([companyId, status])
@@ -524,7 +530,7 @@ model StockBalance {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
   company          Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  item             Item     @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  item             Item     @relation(fields: [companyId, itemId], references: [companyId, id], onDelete: Restrict)
 
   @@unique([companyId, itemId])
   @@index([companyId, quantityOnHand])
@@ -546,13 +552,14 @@ model StockMovement {
   metadata          Json?
   createdAt         DateTime                @default(now()) @map("created_at")
   company           Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  item              Item                    @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  item              Item                    @relation(fields: [companyId, itemId], references: [companyId, id], onDelete: Restrict)
   createdBy         User?                   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   adjustmentRequest StockAdjustmentRequest?
 
   @@index([companyId, createdAt])
   @@index([companyId, itemId, createdAt])
   @@index([companyId, sourceType, sourceId])
+  @@unique([companyId, id])
   @@map("stock_movements")
 }
 
@@ -576,7 +583,7 @@ model StockAdjustmentRequest {
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
   company           Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  item              Item                  @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  item              Item                  @relation(fields: [companyId, itemId], references: [companyId, id], onDelete: Restrict)
   requestedBy       User?                 @relation("StockAdjustmentRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   reviewedBy        User?                 @relation("StockAdjustmentReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   movement          StockMovement?        @relation(fields: [movementId], references: [id], onDelete: SetNull)
@@ -598,8 +605,8 @@ model ProductComponent {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   company         Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  product         Item          @relation("ProductRecipe", fields: [productId], references: [id], onDelete: Restrict)
-  componentItem   Item          @relation("ComponentUsage", fields: [componentItemId], references: [id], onDelete: Restrict)
+  product         Item          @relation("ProductRecipe", fields: [companyId, productId], references: [companyId, id], onDelete: Restrict)
+  componentItem   Item          @relation("ComponentUsage", fields: [companyId, componentItemId], references: [companyId, id], onDelete: Restrict)
 
   @@unique([companyId, productId, componentItemId])
   @@index([companyId, productId, status])
@@ -616,7 +623,7 @@ model Production {
   createdByUserId String?          @map("created_by_user_id")
   createdAt       DateTime         @default(now()) @map("created_at")
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  product         Item             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product         Item             @relation(fields: [companyId, productId], references: [companyId, id], onDelete: Restrict)
   createdBy       User?            @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([companyId, createdAt])
@@ -639,6 +646,7 @@ model CustomerOrder {
 
   @@index([companyId, createdAt])
   @@index([companyId, status])
+  @@unique([companyId, id])
   @@map("customer_orders")
 }
 
@@ -649,8 +657,8 @@ model CustomerOrderItem {
   itemId    String        @map("item_id")
   quantity  Decimal       @db.Decimal(18, 6)
   createdAt DateTime      @default(now()) @map("created_at")
-  order     CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  item      Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  order     CustomerOrder @relation(fields: [companyId, orderId], references: [companyId, id], onDelete: Cascade)
+  item      Item          @relation(fields: [companyId, itemId], references: [companyId, id], onDelete: Restrict)
 
   @@index([companyId, orderId])
   @@index([companyId, itemId])
