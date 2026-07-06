@@ -45,11 +45,11 @@ export default async function HistoryPage() {
             <div className="table-row table-head"><span>Data</span><span>Tipo</span><span>Item</span><span>Quantidade</span><span>Saldo após</span></div>
             {movements.map((movement) => (
               <div className="table-row" key={movement.id}>
-                <span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(movement.createdAt)}</span>
-                <span>{movementLabels[movement.type] ?? movement.type}</span>
-                <span>{movement.item.name}</span>
-                <span>{formatQuantity(movement.quantity)} {movement.item.unit.symbol}</span>
-                <span>{formatQuantity(movement.balanceAfter)} {movement.item.unit.symbol}</span>
+                <span data-label="Data">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(movement.createdAt)}</span>
+                <span data-label="Tipo">{movementLabels[movement.type] ?? movement.type}</span>
+                <span data-label="Item">{movement.item.name}</span>
+                <span data-label="Quantidade">{formatQuantity(movement.quantity)} {movement.item.unit.symbol}</span>
+                <span data-label="Saldo após">{formatQuantity(movement.balanceAfter)} {movement.item.unit.symbol}</span>
               </div>
             ))}
             {movements.length === 0 && <p className="empty-state">Nenhuma movimentação registrada.</p>}
@@ -63,10 +63,10 @@ export default async function HistoryPage() {
               <div className="table-row table-head"><span>Data</span><span>Ação</span><span>Responsável</span><span>Origem</span></div>
               {audits.map((event) => (
                 <div className="table-row" key={event.id}>
-                  <span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(event.createdAt)}</span>
-                  <span><code>{event.action}</code></span>
-                  <span>{event.user?.name ?? "Sistema"}</span>
-                  <span>{event.ipAddress ?? "Interna"}</span>
+                  <span data-label="Data">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(event.createdAt)}</span>
+                  <span data-label="Ação"><code>{event.action}</code></span>
+                  <span data-label="Responsável">{event.user?.name ?? "Sistema"}</span>
+                  <span data-label="Origem">{event.ipAddress ?? "Interna"}</span>
                 </div>
               ))}
             </div>

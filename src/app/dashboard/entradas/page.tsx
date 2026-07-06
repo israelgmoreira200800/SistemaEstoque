@@ -35,11 +35,11 @@ export default async function EntriesPage() {
             <div className="table-row table-head"><span>Data</span><span>Item</span><span>Quantidade</span><span>Responsável</span><span>Documento</span></div>
             {movements.map((movement) => (
               <div className="table-row" key={movement.id}>
-                <span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(movement.createdAt)}</span>
-                <span>{movement.item.name}</span>
-                <span>{formatQuantity(movement.quantity)} {movement.item.unit.symbol}</span>
-                <span>{movement.createdBy?.name ?? "Sistema"}</span>
-                <span>{movement.documentNumber ?? "—"}</span>
+                <span data-label="Data">{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(movement.createdAt)}</span>
+                <span data-label="Item">{movement.item.name}</span>
+                <span data-label="Quantidade">{formatQuantity(movement.quantity)} {movement.item.unit.symbol}</span>
+                <span data-label="Responsável">{movement.createdBy?.name ?? "Sistema"}</span>
+                <span data-label="Documento">{movement.documentNumber ?? "—"}</span>
               </div>
             ))}
             {movements.length === 0 && <p className="empty-state">Nenhuma entrada registrada.</p>}

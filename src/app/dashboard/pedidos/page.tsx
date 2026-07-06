@@ -55,11 +55,11 @@ export default async function OrdersPage() {
             <div className="table-row table-head"><span>Pedido</span><span>Itens</span><span>Status</span><span>Responsável</span><span>Ação</span></div>
             {orders.map((order) => (
               <div className="table-row" key={order.id}>
-                <span><strong>{order.customerName ?? "Cliente não informado"}</strong><small>{order.documentNumber ?? new Intl.DateTimeFormat("pt-BR").format(order.createdAt)}</small></span>
-                <span>{order.items.map((orderItem) => `${formatQuantity(orderItem.quantity)} ${orderItem.item.unit.symbol} ${orderItem.item.name}`).join(", ")}</span>
-                <span><span className={`status-badge ${order.status === "CANCELED" ? "status-inactive" : ""}`}><span />{statusLabels[order.status]}</span></span>
-                <span>{order.createdBy?.name ?? "Sistema"}</span>
-                <span>
+                <span data-label="Pedido"><strong>{order.customerName ?? "Cliente não informado"}</strong><small>{order.documentNumber ?? new Intl.DateTimeFormat("pt-BR").format(order.createdAt)}</small></span>
+                <span data-label="Itens">{order.items.map((orderItem) => `${formatQuantity(orderItem.quantity)} ${orderItem.item.unit.symbol} ${orderItem.item.name}`).join(", ")}</span>
+                <span data-label="Status"><span className={`status-badge ${order.status === "CANCELED" ? "status-inactive" : ""}`}><span />{statusLabels[order.status]}</span></span>
+                <span data-label="Responsável">{order.createdBy?.name ?? "Sistema"}</span>
+                <span data-label="Ação">
                   {canChangeOrderStatus ? (
                     <OrderStatusForm id={order.id} currentStatus={order.status} canDispatch={canDispatchOrders} />
                   ) : canDispatchOrders && order.status !== "SHIPPED" && order.status !== "CANCELED" ? (

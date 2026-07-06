@@ -38,7 +38,7 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
       : {}),
   };
 
-  const [units, categories, items, itemCount] = await Promise.all([
+  const [units, categories, items, itemCount, componentItems] = await Promise.all([
     prisma.unit.findMany({ where: { companyId: session.company.id }, orderBy: [{ status: "asc" }, { name: "asc" }] }),
     prisma.itemCategory.findMany({ where: { companyId: session.company.id }, orderBy: [{ status: "asc" }, { name: "asc" }] }),
     prisma.item.findMany({
@@ -49,6 +49,11 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
       take: pageSize,
     }),
     prisma.item.count({ where: itemWhere }),
+    prisma.item.findMany({
+      where: { companyId: session.company.id, status: "ACTIVE" },
+      include: { unit: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(itemCount / pageSize));
@@ -68,7 +73,11 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
                 <h3>O que entra ou sai do estoque?</h3>
               </div>
             </div>
-            <ItemForm units={activeUnits} categories={activeCategories} />
+            <ItemForm
+              units={activeUnits}
+              categories={activeCategories}
+              componentItems={componentItems.map((item) => ({ id: item.id, name: item.name, unit: item.unit.symbol, type: item.type }))}
+            />
           </section>
         )}
 
@@ -88,14 +97,14 @@ export default async function ItemsPage({ searchParams }: { searchParams: Promis
             <div className="table-row table-head"><span>Item</span><span>Tipo</span><span>Categoria</span><span>Unidade</span><span /></div>
             {items.map((item) => (
               <div className="table-row" key={item.id}>
-                <span className="person-cell">
+                <span className="person-cell" data-label="Item">
                   <span className={`metric-icon ${item.status === "ACTIVE" ? "metric-green" : "metric-muted"}`}><Boxes size={17} /></span>
                   <span><strong>{item.name}</strong><small>{item.sku ?? "Sem SKU"}{item.status === "INACTIVE" ? " · Inativo" : ""}</small></span>
                 </span>
-                <span>{typeLabels[item.type]}</span>
-                <span>{item.category?.name ?? "—"}</span>
-                <span>{item.unit.symbol}</span>
-                <Link className="table-action" href={`/dashboard/itens/${item.id}`}><Pencil size={14} /> Editar</Link>
+                <span data-label="Tipo">{typeLabels[item.type]}</span>
+                <span data-label="Categoria">{item.category?.name ?? "—"}</span>
+                <span data-label="Unidade">{item.unit.symbol}</span>
+                <Link className="table-action" data-label="Ação" href={`/dashboard/itens/${item.id}`}><Pencil size={14} /> Editar</Link>
               </div>
             ))}
             {items.length === 0 && <p className="empty-state">Nenhum item encontrado.</p>}

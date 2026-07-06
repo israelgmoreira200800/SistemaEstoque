@@ -8,6 +8,15 @@ describe("company onboarding defaults", () => {
     const administrator = DEFAULT_ROLE_PROFILES.find((role) => role.slug === "administrador");
 
     expect(administrator?.permissions).toEqual(ALL_PERMISSION_KEYS);
+    expect(administrator?.permissions).toContain("bom.update");
+  });
+
+  it("mantem producao sem permissao para editar ficha tecnica", () => {
+    const production = DEFAULT_ROLE_PROFILES.find((role) => role.slug === "producao");
+
+    expect(production?.permissions).toContain("bom.view");
+    expect(production?.permissions).not.toContain("bom.update");
+    expect(production?.permissions).not.toContain("bom.inactivate");
   });
 
   it("prepara setores operacionais essenciais", () => {

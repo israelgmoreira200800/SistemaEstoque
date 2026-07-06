@@ -149,4 +149,13 @@ auditáveis.
 - Produção consome componentes e gera resultado atomicamente.
 - Perdas e ajustes registram motivo, usuário e auditoria.
 - Dashboards usam dados reais e filtros funcionais.
-- Regras críticas possuem testes automatizados.
+- Regras criticas possuem testes automatizados.
+
+## Regra atualizada de ficha tecnica
+
+- A composicao do produto e definida antes da producao, no cadastro do produto.
+- A gestao da ficha tecnica exige permissao `bom.*`.
+- O operador de producao nao escolhe componentes no lancamento; ele informa
+  produto, quantidade, perdas, lote e observacao.
+- A producao consome automaticamente a ficha ativa da empresa e bloqueia a
+  finalizacao quando faltar componente disponivel.

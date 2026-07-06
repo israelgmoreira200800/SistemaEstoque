@@ -1,15 +1,132 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requirePermission } from "@/lib/auth/session";
+import { requirePermission, requireSession } from "@/lib/auth/session";
 import { consumeUsageLimit, syncUsageLimitCounter } from "@/lib/billing/usage-limits";
 import { createCategorySchema, createItemSchema, createUnitSchema, unitConversionSchema, updateCategorySchema, updateItemSchema, updateUnitSchema } from "@/lib/catalog/validation";
+import { productComponentSchema } from "@/lib/production/validation";
 import { prisma } from "@/lib/prisma";
+import { isWholeQuantity } from "@/lib/stock/quantity";
+import { quantitySchema } from "@/lib/stock/validation";
 
 export type CatalogActionState = { success?: string; error?: string };
 
+function hasAnyPermission(grantedPermissions: ReadonlySet<string>, permissions: string[]) {
+  return permissions.some((permission) => grantedPermissions.has(permission));
+}
+
 function isUniqueError(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+}
+
+export async function saveBomComponentAction(
+  _state: CatalogActionState,
+  formData: FormData,
+): Promise<CatalogActionState> {
+  const session = await requireSession();
+  const parsed = productComponentSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados invalidos." };
+  if (parsed.data.productId === parsed.data.componentItemId) {
+    return { error: "O produto nao pode ser componente dele mesmo." };
+  }
+
+  const existing = await prisma.productComponent.findUnique({
+    where: {
+      companyId_productId_componentItemId: {
+        companyId: session.company.id,
+        productId: parsed.data.productId,
+        componentItemId: parsed.data.componentItemId,
+      },
+    },
+    select: { id: true },
+  });
+  const canSaveComponent = existing
+    ? hasAnyPermission(session.permissions, ["bom.update", "recipe.update", "item.update", "permission.manage"])
+    : hasAnyPermission(session.permissions, ["bom.create", "recipe.create", "item.update", "permission.manage"]);
+  if (!canSaveComponent) {
+    return { error: "Voce nao tem permissao para gerenciar ficha tecnica." };
+  }
+
+  const [product, component] = await Promise.all([
+    prisma.item.findFirst({
+      where: {
+        id: parsed.data.productId,
+        companyId: session.company.id,
+        status: "ACTIVE",
+        type: { in: ["FINISHED_PRODUCT", "INTERMEDIATE", "RESALE"] },
+      },
+    }),
+    prisma.item.findFirst({
+      where: { id: parsed.data.componentItemId, companyId: session.company.id, status: "ACTIVE" },
+      include: { unit: true },
+    }),
+  ]);
+
+  if (!product || !component) return { error: "Produto ou componente invalido." };
+  if (!component.unit.allowsFraction && !isWholeQuantity(parsed.data.quantity)) {
+    return { error: "A unidade do componente nao permite quantidade fracionada." };
+  }
+
+  const componentRecord = await prisma.$transaction(async (tx) => {
+    const saved = await tx.productComponent.upsert({
+      where: {
+        companyId_productId_componentItemId: {
+          companyId: session.company.id,
+          productId: parsed.data.productId,
+          componentItemId: parsed.data.componentItemId,
+        },
+      },
+      update: { quantity: parsed.data.quantity, status: "ACTIVE" },
+      create: { companyId: session.company.id, ...parsed.data },
+    });
+    await tx.auditLog.create({
+      data: {
+        companyId: session.company.id,
+        userId: session.user.id,
+        action: existing ? "bom.component.updated" : "bom.component.created",
+        entityType: "product_component",
+        entityId: saved.id,
+        metadata: parsed.data,
+      },
+    });
+    return saved;
+  });
+
+  revalidatePath(`/dashboard/cadastros/itens/${componentRecord.productId}`);
+  revalidatePath(`/dashboard/itens/${componentRecord.productId}`);
+  revalidatePath("/dashboard/producao");
+  return { success: "Componente salvo na ficha tecnica." };
+}
+
+export async function inactivateBomComponentAction(
+  _state: CatalogActionState,
+  formData: FormData,
+): Promise<CatalogActionState> {
+  const session = await requireSession();
+  if (!hasAnyPermission(session.permissions, ["bom.inactivate", "recipe.inactivate", "item.update", "permission.manage"])) {
+    return { error: "Voce nao tem permissao para inativar componente da ficha tecnica." };
+  }
+  const id = String(formData.get("id") ?? "");
+  const component = await prisma.productComponent.findFirst({ where: { id, companyId: session.company.id } });
+  if (!component) return { error: "Componente nao encontrado." };
+
+  await prisma.$transaction([
+    prisma.productComponent.updateMany({ where: { id: component.id, companyId: session.company.id }, data: { status: "INACTIVE" } }),
+    prisma.auditLog.create({
+      data: {
+        companyId: session.company.id,
+        userId: session.user.id,
+        action: "bom.component.inactivated",
+        entityType: "product_component",
+        entityId: component.id,
+      },
+    }),
+  ]);
+
+  revalidatePath(`/dashboard/cadastros/itens/${component.productId}`);
+  revalidatePath(`/dashboard/itens/${component.productId}`);
+  revalidatePath("/dashboard/producao");
+  return { success: "Componente removido da ficha tecnica." };
 }
 
 export async function createUnitAction(
@@ -65,6 +182,26 @@ export async function createItemAction(
   const session = await requirePermission("item.create");
   const parsed = createItemSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  const componentIds = formData.getAll("componentItemId").map((value) => String(value));
+  const componentQuantities = formData.getAll("componentQuantity").map((value) => String(value));
+  const bomComponents = componentIds
+    .map((componentItemId, index) => ({ componentItemId, quantity: componentQuantities[index] ?? "" }))
+    .filter((component) => component.componentItemId || component.quantity);
+  const isProductWithBom = parsed.data.type === "FINISHED_PRODUCT";
+
+  if (!isProductWithBom && bomComponents.length > 0) {
+    return { error: "Componentes so podem ser informados para produto acabado neste cadastro." };
+  }
+  for (const component of bomComponents) {
+    if (!component.componentItemId || !component.quantity) {
+      return { error: "Informe componente e quantidade em todas as linhas da ficha tecnica." };
+    }
+    const quantity = quantitySchema.safeParse(component.quantity);
+    if (!quantity.success) return { error: quantity.error.issues[0]?.message ?? "Quantidade do componente invalida." };
+    component.quantity = quantity.data;
+  }
+  const duplicatedComponent = bomComponents.find((component, index) => bomComponents.findIndex((row) => row.componentItemId === component.componentItemId) !== index);
+  if (duplicatedComponent) return { error: "Nao repita o mesmo componente na ficha tecnica." };
 
   const [unit, category] = await Promise.all([
     prisma.unit.findFirst({ where: { id: parsed.data.unitId, companyId: session.company.id, status: "ACTIVE" }, select: { id: true, allowsFraction: true } }),
@@ -76,6 +213,21 @@ export async function createItemAction(
   if (!unit) return { error: "A unidade selecionada não pertence à empresa ou está inativa." };
   if (parsed.data.categoryId && !category) return { error: "A categoria selecionada não pertence à empresa ou está inativa." };
   if (!unit.allowsFraction && !Number.isInteger(Number(parsed.data.minimumStock))) return { error: "Essa unidade não permite estoque mínimo fracionário." };
+  const componentRecords = bomComponents.length
+    ? await prisma.item.findMany({
+        where: { id: { in: bomComponents.map((component) => component.componentItemId) }, companyId: session.company.id, status: "ACTIVE" },
+        include: { unit: true },
+      })
+    : [];
+  if (componentRecords.length !== bomComponents.length) {
+    return { error: "Um ou mais componentes nao pertencem a empresa ou estao inativos." };
+  }
+  for (const component of bomComponents) {
+    const componentRecord = componentRecords.find((item) => item.id === component.componentItemId);
+    if (componentRecord && !componentRecord.unit.allowsFraction && !isWholeQuantity(component.quantity)) {
+      return { error: `A unidade de ${componentRecord.name} nao permite quantidade fracionaria.` };
+    }
+  }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -86,13 +238,33 @@ export async function createItemAction(
       if (!usage.allowed) return { error: usage.error };
 
       const item = await tx.item.create({ data: { companyId: session.company.id, ...parsed.data } });
-      await tx.auditLog.create({ data: { companyId: session.company.id, userId: session.user.id, action: "catalog.item.created", entityType: "item", entityId: item.id, metadata: { name: item.name, sku: item.sku, type: item.type } } });
+      if (bomComponents.length > 0) {
+        await tx.productComponent.createMany({
+          data: bomComponents.map((component) => ({
+            companyId: session.company.id,
+            productId: item.id,
+            componentItemId: component.componentItemId,
+            quantity: component.quantity,
+          })),
+        });
+      }
+      await tx.auditLog.create({
+        data: {
+          companyId: session.company.id,
+          userId: session.user.id,
+          action: "catalog.item.created",
+          entityType: "item",
+          entityId: item.id,
+          metadata: { name: item.name, sku: item.sku, type: item.type, bomComponents: bomComponents.length },
+        },
+      });
       return { success: true };
     });
     if ("error" in result) return { error: result.error };
     revalidatePath("/dashboard/itens");
     revalidatePath("/dashboard/cadastros");
-    return { success: "Item cadastrado." };
+    revalidatePath("/dashboard/producao");
+    return { success: bomComponents.length > 0 ? "Item cadastrado com ficha tecnica." : "Item cadastrado." };
   } catch (error) {
     return { error: isUniqueError(error) ? "SKU ou código de barras já utilizado nesta empresa." : "Não foi possível cadastrar o item." };
   }

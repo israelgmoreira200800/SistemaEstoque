@@ -200,12 +200,12 @@ export default async function PlatformCompanyDetailPage({
           </div>
           {company.platformAuditLogs.map((event) => (
             <div className="table-row" key={event.id}>
-              <span>{formatDate(event.createdAt)}</span>
-              <span>
+              <span data-label="Data">{formatDate(event.createdAt)}</span>
+              <span data-label="Ação">
                 <code>{event.action}</code>
               </span>
-              <span>{event.platformUser?.name ?? "Sistema"}</span>
-              <span>{event.reason ?? "-"}</span>
+              <span data-label="Operador">{event.platformUser?.name ?? "Sistema"}</span>
+              <span data-label="Motivo">{event.reason ?? "-"}</span>
             </div>
           ))}
           {company.platformAuditLogs.length === 0 && <p className="empty-state">Nenhuma acao da plataforma registrada.</p>}

@@ -4,7 +4,7 @@
 
 ## Estado geral
 
-Fase atual: **Fase 11 - Relatorios e exportacao CSV (concluida)**.
+Fase atual: **Fase 12 - Ficha tecnica separada da producao (concluida)**.
 
 O sistema foi refatorado para uso em uma única empresa, sem módulo de filiais. A
 complexidade de filial/depósito saiu da experiência e do modelo operacional. O MVP
@@ -41,6 +41,10 @@ A Fase 11 adiciona relatorios operacionais por empresa, com indicadores,
 consultas recentes e exportacao CSV para estoque, movimentacoes, pedidos e
 producoes. As exportacoes exigem `report.export`, respeitam o `companyId` da
 sessao e registram auditoria `report.exported`.
+A Fase 12 separa a gestao da ficha tecnica do lancamento de producao. A ficha
+fica no detalhe do item/produto e usa permissoes `bom.*`; a producao recebe
+somente dados operacionais, busca componentes no banco, valida saldo disponivel
+e rejeita componentes enviados manualmente pelo frontend.
 
 ## Concluído nesta entrega
 
@@ -148,6 +152,12 @@ sessao e registram auditoria `report.exported`.
 - [x] Filtrar todos os relatorios pela empresa autenticada.
 - [x] Auditar exportacoes com `report.exported`.
 - [x] Adicionar helper testado para geracao de CSV.
+- [x] Criar permissoes `bom.view`, `bom.create`, `bom.update` e `bom.inactivate`.
+- [x] Mover gestao da ficha tecnica para o detalhe do item/produto.
+- [x] Remover edicao de componentes da tela de producao.
+- [x] Fazer a producao consumir somente ficha tecnica ativa carregada do banco.
+- [x] Rejeitar componentes enviados manualmente no lancamento de producao.
+- [x] Usar saldo disponivel atomico para consumo de componentes de producao.
 
 ## Tabelas atuais relevantes
 
@@ -315,7 +325,7 @@ Perfis esperados:
 - **Administrador**: vê e altera tudo.
 - **Gerente**: opera quase tudo, mas não deve remover controles críticos.
 - **Pedidos**: cria e acompanha pedidos.
-- **Produção**: vê produção, ficha técnica e registra produção.
+- **Produção**: ve producao, consulta ficha tecnica e registra producao sem editar componentes.
 - **Estoque**: registra entradas, saídas, perdas, ajustes e inventário.
 - **Expedição**: vê pedidos e ações de expedição.
 - **Visualizador**: consulta dados sem alterar.

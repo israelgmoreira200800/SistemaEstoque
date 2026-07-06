@@ -155,11 +155,11 @@ export default async function ReportsPage() {
             <div className="table-row table-head"><span>Item</span><span>Saldo</span><span>Disponivel</span><span>Minimo</span><span>Status</span></div>
             {stockPreview.map((item) => (
               <div className="table-row" key={item.id}>
-                <span><strong>{item.name}</strong><small>{item.category?.name ?? "Sem categoria"}</small></span>
-                <span>{formatQuantity(item.stockBalance?.quantityOnHand ?? 0)} {item.unit.symbol}</span>
-                <span>{formatQuantity(availableQuantity(item.stockBalance))} {item.unit.symbol}</span>
-                <span>{formatQuantity(item.minimumStock)} {item.unit.symbol}</span>
-                <span><span className={`status-badge ${item.status === "INACTIVE" ? "status-inactive" : ""}`}><span />{item.status === "ACTIVE" ? "Ativo" : "Inativo"}</span></span>
+                <span data-label="Item"><strong>{item.name}</strong><small>{item.category?.name ?? "Sem categoria"}</small></span>
+                <span data-label="Saldo">{formatQuantity(item.stockBalance?.quantityOnHand ?? 0)} {item.unit.symbol}</span>
+                <span data-label="Disponível">{formatQuantity(availableQuantity(item.stockBalance))} {item.unit.symbol}</span>
+                <span data-label="Mínimo">{formatQuantity(item.minimumStock)} {item.unit.symbol}</span>
+                <span data-label="Status"><span className={`status-badge ${item.status === "INACTIVE" ? "status-inactive" : ""}`}><span />{item.status === "ACTIVE" ? "Ativo" : "Inativo"}</span></span>
               </div>
             ))}
             {stockPreview.length === 0 && <p className="empty-state">Nenhum item cadastrado.</p>}
@@ -172,11 +172,11 @@ export default async function ReportsPage() {
             <div className="table-row table-head"><span>Data</span><span>Tipo</span><span>Item</span><span>Quantidade</span><span>Responsavel</span></div>
             {latestMovements.map((movement) => (
               <div className="table-row" key={movement.id}>
-                <span>{formatDateTime(movement.createdAt)}</span>
-                <span>{movementLabels[movement.type] ?? movement.type}</span>
-                <span>{movement.item.name}</span>
-                <span>{formatQuantity(movement.quantity)} {movement.item.unit.symbol}</span>
-                <span>{movement.createdBy?.name ?? "Sistema"}</span>
+                <span data-label="Data">{formatDateTime(movement.createdAt)}</span>
+                <span data-label="Tipo">{movementLabels[movement.type] ?? movement.type}</span>
+                <span data-label="Item">{movement.item.name}</span>
+                <span data-label="Quantidade">{formatQuantity(movement.quantity)} {movement.item.unit.symbol}</span>
+                <span data-label="Responsável">{movement.createdBy?.name ?? "Sistema"}</span>
               </div>
             ))}
             {latestMovements.length === 0 && <p className="empty-state">Nenhuma movimentacao registrada.</p>}
@@ -189,11 +189,11 @@ export default async function ReportsPage() {
             <div className="table-row table-head"><span>Pedido</span><span>Itens</span><span>Status</span><span>Responsavel</span><span>Data</span></div>
             {orders.map((order) => (
               <div className="table-row" key={order.id}>
-                <span><strong>{order.customerName ?? "Cliente nao informado"}</strong><small>{order.documentNumber ?? "Sem documento"}</small></span>
-                <span>{order.items.map((orderItem) => `${formatQuantity(orderItem.quantity)} ${orderItem.item.unit.symbol} ${orderItem.item.name}`).join(", ") || "Sem itens"}</span>
-                <span><span className={`status-badge ${order.status === "CANCELED" ? "status-inactive" : ""}`}><span />{orderStatusLabels[order.status] ?? order.status}</span></span>
-                <span>{order.createdBy?.name ?? "Sistema"}</span>
-                <span>{formatDateTime(order.createdAt)}</span>
+                <span data-label="Pedido"><strong>{order.customerName ?? "Cliente nao informado"}</strong><small>{order.documentNumber ?? "Sem documento"}</small></span>
+                <span data-label="Itens">{order.items.map((orderItem) => `${formatQuantity(orderItem.quantity)} ${orderItem.item.unit.symbol} ${orderItem.item.name}`).join(", ") || "Sem itens"}</span>
+                <span data-label="Status"><span className={`status-badge ${order.status === "CANCELED" ? "status-inactive" : ""}`}><span />{orderStatusLabels[order.status] ?? order.status}</span></span>
+                <span data-label="Responsável">{order.createdBy?.name ?? "Sistema"}</span>
+                <span data-label="Data">{formatDateTime(order.createdAt)}</span>
               </div>
             ))}
             {orders.length === 0 && <p className="empty-state">Nenhum pedido registrado.</p>}
@@ -206,11 +206,11 @@ export default async function ReportsPage() {
             <div className="table-row table-head"><span>Data</span><span>Produto</span><span>Quantidade</span><span>Responsavel</span><span>Status</span></div>
             {productions.map((production) => (
               <div className="table-row" key={production.id}>
-                <span>{formatDateTime(production.createdAt)}</span>
-                <span>{production.product.name}</span>
-                <span>{formatQuantity(production.quantity)} {production.product.unit.symbol}</span>
-                <span>{production.createdBy?.name ?? "Sistema"}</span>
-                <span>{production.status === "COMPLETED" ? "Concluida" : "Cancelada"}</span>
+                <span data-label="Data">{formatDateTime(production.createdAt)}</span>
+                <span data-label="Produto">{production.product.name}</span>
+                <span data-label="Quantidade">{formatQuantity(production.quantity)} {production.product.unit.symbol}</span>
+                <span data-label="Responsável">{production.createdBy?.name ?? "Sistema"}</span>
+                <span data-label="Status">{production.status === "COMPLETED" ? "Concluida" : "Cancelada"}</span>
               </div>
             ))}
             {productions.length === 0 && <p className="empty-state">Nenhuma producao registrada.</p>}

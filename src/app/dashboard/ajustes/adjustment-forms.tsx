@@ -145,22 +145,22 @@ export function AdjustmentRequestTable({
       </div>
       {requests.map((request) => (
         <div className="table-row" key={request.id}>
-          <span className={`status-badge ${request.statusClassName}`}><span />{request.statusLabel}</span>
-          <span>
+          <span data-label="Status"><span className={`status-badge ${request.statusClassName}`}><span />{request.statusLabel}</span></span>
+          <span data-label="Item">
             <strong>{request.itemName}</strong>
             <small>{request.currentBalance} {request.unit} agora</small>
           </span>
-          <span>{request.kindLabel}</span>
-          <span>
+          <span data-label="Tipo">{request.kindLabel}</span>
+          <span data-label="Saldos">
             <strong>{request.currentQuantity} {"->"} {request.requestedQuantity} {request.unit}</strong>
             <small>{request.appliedDelta ?? request.initialDelta}</small>
           </span>
-          <span>
+          <span data-label="Solicitação">
             <strong>{request.requestedBy}</strong>
             <small>{request.createdAt}{request.documentNumber ? ` · ${request.documentNumber}` : ""}</small>
             {request.reason && <small>{request.reason}</small>}
           </span>
-          <span>
+          <span data-label="Revisão">
             {request.status === "PENDING" && canApprove ? (
               <AdjustmentReviewForms requestId={request.id} />
             ) : (

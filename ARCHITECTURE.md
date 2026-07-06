@@ -140,6 +140,17 @@ Limites de usuarios e itens ativos sao consumidos dentro da mesma transacao que
 cria ou reativa o recurso. Bloqueio de usuario e inativacao de item sincronizam
 o contador de uso.
 
+## Ficha tecnica e producao
+
+A ficha tecnica usa a estrutura existente `product_components`, com produto,
+componente, quantidade e status por empresa. A manutencao fica no detalhe do
+item/produto e e protegida por `bom.*`.
+
+A tela de producao nao permite editar componentes. Ao finalizar, o backend recebe
+somente dados operacionais, busca a ficha ativa da empresa, recalcula consumo,
+valida saldo disponivel e grava consumo dos componentes, entrada do produto
+acabado, movimentos e auditoria em uma unica transacao.
+
 ## Auditoria
 
 Eventos críticos são gravados em `audit_logs` com empresa, usuário, ação, entidade,

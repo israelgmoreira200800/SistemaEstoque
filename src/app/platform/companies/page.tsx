@@ -118,7 +118,7 @@ export default async function PlatformCompaniesPage({
             const currentSubscription = company.subscriptions[0];
             return (
               <div className="table-row" key={company.id}>
-                <span className="person-cell">
+                <span className="person-cell" data-label="Empresa">
                   <span className={`metric-icon ${company.status === "SUSPENDED" || company.status === "CANCELLED" ? "metric-muted" : "metric-green"}`}>
                     <Building2 size={17} />
                   </span>
@@ -127,18 +127,18 @@ export default async function PlatformCompaniesPage({
                     <small>{company.slug}</small>
                   </span>
                 </span>
-                <span>
+                <span data-label="Status">
                   <span className={`status-badge ${company.status === "SUSPENDED" || company.status === "CANCELLED" ? "status-inactive" : ""}`}>
                     <span />
                     {statusLabels[company.status]}
                   </span>
                 </span>
-                <span>{currentSubscription?.plan.name ?? company.plan?.name ?? "-"}</span>
-                <span>
+                <span data-label="Plano">{currentSubscription?.plan.name ?? company.plan?.name ?? "-"}</span>
+                <span data-label="Uso">
                   {company._count.users} usuarios, {company._count.items} itens, {company._count.customerOrders} pedidos
                 </span>
-                <span>{formatDate(company.trialEndsAt)}</span>
-                <Link className="table-action" href={`/platform/companies/${company.id}`}>
+                <span data-label="Trial">{formatDate(company.trialEndsAt)}</span>
+                <Link className="table-action" data-label="Ação" href={`/platform/companies/${company.id}`}>
                   Gerenciar
                 </Link>
               </div>

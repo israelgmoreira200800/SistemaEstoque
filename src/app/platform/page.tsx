@@ -142,13 +142,13 @@ export default async function PlatformHomePage() {
             </div>
             {latestCompanies.map((company) => (
               <div className="table-row" key={company.id}>
-                <span>
+                <span data-label="Empresa">
                   <strong>{company.name}</strong>
                   <small>{company.slug}</small>
                 </span>
-                <span>{company.status}</span>
-                <span>{company.plan?.name ?? "-"}</span>
-                <span>{company._count.users} usuarios, {company._count.items} itens</span>
+                <span data-label="Status">{company.status}</span>
+                <span data-label="Plano">{company.plan?.name ?? "-"}</span>
+                <span data-label="Uso">{company._count.users} usuarios, {company._count.items} itens</span>
               </div>
             ))}
           </div>
@@ -161,7 +161,7 @@ export default async function PlatformHomePage() {
               <h3>Eventos da plataforma</h3>
             </div>
           </div>
-          <div className="data-table platform-audit-table">
+          <div className="data-table platform-audit-table platform-audit-table-compact">
             <div className="table-row table-head">
               <span>Data</span>
               <span>Acao</span>
@@ -169,11 +169,11 @@ export default async function PlatformHomePage() {
             </div>
             {latestAudit.map((event) => (
               <div className="table-row" key={event.id}>
-                <span>{formatDate(event.createdAt)}</span>
-                <span>
+                <span data-label="Data">{formatDate(event.createdAt)}</span>
+                <span data-label="Ação">
                   <code>{event.action}</code>
                 </span>
-                <span>{event.company?.name ?? event.platformUser?.name ?? "Sistema"}</span>
+                <span data-label="Contexto">{event.company?.name ?? event.platformUser?.name ?? "Sistema"}</span>
               </div>
             ))}
           </div>

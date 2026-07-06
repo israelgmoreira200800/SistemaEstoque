@@ -134,5 +134,15 @@ ao movimento de estoque gerado na aprovacao.
 - Aceite de convite consome o limite de usuarios antes de ativar a conta.
 - `email_outbox` guarda o conteudo necessario para entrega enquanto nao existe
   provedor SMTP integrado; nao substitui auditoria.
-- Movimentações confirmadas não são editadas pela aplicação.
-- Entrada, saída e produção gravam movimento e auditoria em transação.
+- Movimentacoes confirmadas nao sao editadas pela aplicacao.
+- Entrada, saida e producao gravam movimento e auditoria em transacao.
+
+## Ficha tecnica
+
+Nao foram criadas novas tabelas para a ficha tecnica. O modelo atual
+`product_components` ja representa a composicao ativa por empresa, produto,
+componente, quantidade e status.
+
+Producoes novas usam somente componentes ativos de `product_components` filtrados
+por `company_id`, `product_id`, produto ativo e componente ativo. O frontend nao e
+fonte de verdade para a lista de componentes consumidos.

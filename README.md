@@ -170,3 +170,15 @@ Usuários → Cargos → Permissões do cargo → Overrides individuais → Audi
 14. Expedicao de pedido baixa estoque e registra movimento na mesma transacao.
 15. Exportacoes de relatorios exigem permissao no backend e usam somente dados
     da empresa autenticada.
+
+## Atualizacao de producao e ficha tecnica
+
+- A ficha tecnica agora e gerenciada no detalhe do item/produto, por usuarios com
+  permissoes `bom.create`, `bom.update` e `bom.inactivate`.
+- O operador de producao informa apenas produto, quantidade, perdas, lote e
+  observacao; a composicao vem sempre do banco.
+- A finalizacao de producao busca componentes ativos da empresa autenticada,
+  valida saldo disponivel, consome componentes e adiciona o produto acabado na
+  mesma transacao.
+- A tela de producao mostra os componentes apenas para conferencia e nao envia
+  lista manual de consumo.

@@ -26,6 +26,11 @@ export const PERMISSIONS = [
   { key: "unit.update", module: "unit", action: "update", name: "Editar unidades de medida" },
   { key: "unit.inactivate", module: "unit", action: "inactivate", name: "Inativar unidades de medida" },
 
+  { key: "bom.view", module: "bom", action: "view", name: "Ver fichas tecnicas" },
+  { key: "bom.create", module: "bom", action: "create", name: "Criar fichas tecnicas" },
+  { key: "bom.update", module: "bom", action: "update", name: "Editar fichas tecnicas" },
+  { key: "bom.inactivate", module: "bom", action: "inactivate", name: "Inativar fichas tecnicas" },
+
   { key: "recipe.view", module: "recipe", action: "view", name: "Ver fichas técnicas" },
   { key: "recipe.create", module: "recipe", action: "create", name: "Criar fichas técnicas" },
   { key: "recipe.update", module: "recipe", action: "update", name: "Editar fichas técnicas" },
@@ -149,6 +154,7 @@ export function permissionModuleLabel(module: string) {
     item: "Itens",
     category: "Categorias",
     unit: "Unidades",
+    bom: "Fichas tecnicas",
     recipe: "Fichas técnicas",
     stock: "Estoque",
     order: "Pedidos",

@@ -117,3 +117,21 @@ describe("reserved stock helpers", () => {
     expect("balance" in result).toBe(true);
   });
 });
+
+describe("decrementAvailableStockBalance", () => {
+  it("recusa baixa quando saldo disponivel atomico nao atende a quantidade", async () => {
+    process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/test";
+    const { decrementAvailableStockBalance } = await import("./service");
+    const $queryRaw = vi.fn(async () => []);
+    const tx = { $queryRaw } as unknown as Prisma.TransactionClient;
+
+    const result = await decrementAvailableStockBalance(tx, {
+      companyId: "company-1",
+      itemId: "item-1",
+      quantity: "6",
+    });
+
+    expect(result).toEqual({ error: "Estoque disponivel insuficiente para esta saida." });
+    expect($queryRaw).toHaveBeenCalledOnce();
+  });
+});

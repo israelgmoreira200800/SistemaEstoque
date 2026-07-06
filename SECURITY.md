@@ -120,6 +120,17 @@ São auditados:
 
 Credenciais, tokens, cookies e segredos nunca devem ser gravados em auditoria.
 
+## Ficha tecnica e producao
+
+- Permissoes `bom.view`, `bom.create`, `bom.update` e `bom.inactivate` separam a
+  gestao da ficha tecnica da operacao de producao.
+- Operadores de producao podem visualizar os componentes necessarios, mas nao
+  criar, editar ou remover componentes sem permissao `bom.*`.
+- Server Actions de producao rejeitam campos extras, incluindo listas manuais de
+  componentes, e o backend recalcula o consumo a partir do banco.
+- A baixa dos componentes usa saldo disponivel e acontece na mesma transacao da
+  entrada do produto acabado e da auditoria.
+
 ## Segredos
 
 - `.env` é local e ignorado pelo Git.

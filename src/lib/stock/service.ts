@@ -125,6 +125,33 @@ export async function decrementStockBalance(
   return { balance };
 }
 
+export async function decrementAvailableStockBalance(
+  tx: Prisma.TransactionClient,
+  input: StockBalanceDecreaseInput,
+) {
+  const rows = await tx.$queryRaw<StockBalance[]>(Prisma.sql`
+    UPDATE "stock_balances"
+    SET
+      "quantity_on_hand" = "quantity_on_hand" - ${input.quantity}::numeric,
+      "updated_at" = NOW()
+    WHERE "company_id" = ${input.companyId}
+      AND "item_id" = ${input.itemId}
+      AND ("quantity_on_hand" - "quantity_reserved" - "quantity_blocked") >= ${input.quantity}::numeric
+      AND EXISTS (
+        SELECT 1
+        FROM "items"
+        WHERE "items"."company_id" = ${input.companyId}
+          AND "items"."id" = ${input.itemId}
+          AND "items"."status" = 'ACTIVE'
+      )
+    RETURNING *
+  `);
+
+  const balance = rows[0];
+  if (!balance) return { error: "Estoque disponivel insuficiente para esta saida." };
+  return { balance };
+}
+
 export async function registerStockIncrease(input: StockMovementInput) {
   const item = await prisma.item.findFirst({
     where: { id: input.itemId, companyId: input.companyId, status: "ACTIVE" },
