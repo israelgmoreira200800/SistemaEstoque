@@ -8,6 +8,7 @@ type OutboxEmail = {
   recipientEmail: string;
   subject: string;
   body: string;
+  metadata?: Prisma.JsonValue | null;
 };
 
 export function smtpConfigured() {
@@ -36,6 +37,15 @@ function mergeMetadata(metadata: unknown, delivery: Prisma.InputJsonValue) {
   };
 }
 
+function getHtmlBody(metadata: unknown) {
+  if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) return undefined;
+  if (!("email" in metadata)) return undefined;
+  const email = metadata.email;
+  if (typeof email !== "object" || email === null || Array.isArray(email)) return undefined;
+  if (!("htmlBody" in email) || typeof email.htmlBody !== "string") return undefined;
+  return email.htmlBody;
+}
+
 export async function deliverOutboxEmail(email: OutboxEmail) {
   const env = getServerEnv();
   const transport = createTransport();
@@ -49,6 +59,7 @@ export async function deliverOutboxEmail(email: OutboxEmail) {
       to: email.recipientEmail,
       subject: email.subject,
       text: email.body,
+      html: getHtmlBody(email.metadata),
     });
     const current = await prisma.emailOutbox.findUnique({
       where: { id: email.id },

@@ -3,6 +3,7 @@ import { createAccountToken, addMinutes, hashAccountToken, isExpired } from "@/l
 import { hashPassword, normalizeEmail } from "@/lib/auth/password";
 import { enqueueEmail, buildTokenUrl } from "@/lib/email/outbox";
 import { deliverOutboxEmail } from "@/lib/email/smtp";
+import { buildPasswordResetEmail } from "@/lib/email/templates";
 import { prisma } from "@/lib/prisma";
 
 const PASSWORD_RESET_MINUTES = 30;
@@ -58,20 +59,21 @@ export async function requestPasswordReset(emailInput: string): Promise<Password
       },
     });
 
+    const email = buildPasswordResetEmail({
+      userName: user.name,
+      companyName: user.company.name,
+      resetUrl,
+      expiresAt,
+    });
+
     const queuedEmail = await enqueueEmail(tx, {
       companyId: user.companyId,
       userId: user.id,
       recipientEmail: user.email,
-      subject: "Redefinicao de senha Vertice",
+      subject: email.subject,
       purpose: "password_reset",
-      body: [
-        `Ola, ${user.name}.`,
-        "",
-        "Use o link abaixo para redefinir sua senha. Ele expira em 30 minutos.",
-        resetUrl,
-        "",
-        "Se voce nao pediu essa alteracao, ignore este e-mail.",
-      ].join("\n"),
+      body: email.textBody,
+      htmlBody: email.htmlBody,
       metadata: { passwordResetTokenId: resetToken.id, expiresAt: expiresAt.toISOString() },
     });
 

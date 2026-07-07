@@ -17,10 +17,16 @@ export async function enqueueEmail(
     recipientEmail: string;
     subject: string;
     body: string;
+    htmlBody?: string;
     purpose: EmailPurpose;
     metadata?: Prisma.InputJsonValue;
   },
 ) {
+  const metadata = {
+    ...(typeof input.metadata === "object" && input.metadata && !Array.isArray(input.metadata) ? input.metadata : {}),
+    ...(input.htmlBody ? { email: { htmlBody: input.htmlBody } } : {}),
+  };
+
   return tx.emailOutbox.create({
     data: {
       companyId: input.companyId,
@@ -29,7 +35,7 @@ export async function enqueueEmail(
       subject: input.subject,
       body: input.body,
       purpose: input.purpose,
-      metadata: input.metadata,
+      metadata,
     },
   });
 }

@@ -3,6 +3,7 @@ import { addTokenDays, createAccountToken, hashAccountToken, isExpired } from "@
 import { hashPassword } from "@/lib/auth/password";
 import { consumeUsageLimit } from "@/lib/billing/usage-limits";
 import { buildTokenUrl, enqueueEmail } from "@/lib/email/outbox";
+import { buildUserInviteEmail } from "@/lib/email/templates";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "../../generated/prisma/client";
 
@@ -19,6 +20,8 @@ export async function createUserInvitation(
     userId: string;
     userName: string;
     userEmail: string;
+    companyName: string;
+    invitedByName?: string | null;
     createdByUserId: string;
     now?: Date;
   },
@@ -43,19 +46,22 @@ export async function createUserInvitation(
     },
   });
 
+  const email = buildUserInviteEmail({
+    userName: input.userName,
+    companyName: input.companyName,
+    invitedByName: input.invitedByName,
+    inviteUrl,
+    expiresAt,
+  });
+
   const emailMessage = await enqueueEmail(tx, {
     companyId: input.companyId,
     userId: input.userId,
     recipientEmail: input.userEmail,
-    subject: "Convite para acessar o Vertice",
+    subject: email.subject,
     purpose: "user_invite",
-    body: [
-      `Ola, ${input.userName}.`,
-      "",
-      "Voce recebeu um convite para acessar o Vertice.",
-      "Defina sua senha pelo link abaixo. Ele expira em 7 dias.",
-      inviteUrl,
-    ].join("\n"),
+    body: email.textBody,
+    htmlBody: email.htmlBody,
     metadata: { invitationId: invitation.id, expiresAt: expiresAt.toISOString() },
   });
 

@@ -139,6 +139,9 @@ Credenciais, tokens, cookies e segredos nunca devem ser gravados em auditoria.
 - Tokens crus de recuperacao e convite nao devem aparecer em auditoria ou logs.
 - `email_outbox` pode conter o corpo de entrega enquanto nao houver SMTP real;
   trate esse conteudo como dado sensivel.
+- Templates HTML de e-mail ficam em `metadata.email.htmlBody` quando gerados;
+  trate esse conteudo com o mesmo cuidado do corpo texto, pois links de acao
+  podem conter tokens temporarios.
 
 ## Verificações por entrega
 

@@ -71,6 +71,8 @@ export async function createUserAction(
         userId: user.id,
         userName: user.name,
         userEmail: user.email,
+        companyName: session.company.name,
+        invitedByName: session.user.name,
         createdByUserId: session.user.id,
       });
       await tx.auditLog.create({
@@ -161,6 +163,8 @@ export async function resendUserInviteAction(
       userId: user.id,
       userName: user.name,
       userEmail: user.email,
+      companyName: session.company.name,
+      invitedByName: session.user.name,
       createdByUserId: session.user.id,
     });
     await tx.auditLog.create({

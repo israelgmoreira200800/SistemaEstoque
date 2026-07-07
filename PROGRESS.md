@@ -4,7 +4,7 @@
 
 ## Estado geral
 
-Fase atual: **Fase 12 - Ficha tecnica separada da producao (concluida)**.
+Fase atual: **Fase 13 - Templates profissionais de e-mail (concluida)**.
 
 O sistema foi refatorado para uso em uma única empresa, sem módulo de filiais. A
 complexidade de filial/depósito saiu da experiência e do modelo operacional. O MVP
@@ -45,9 +45,23 @@ A Fase 12 separa a gestao da ficha tecnica do lancamento de producao. A ficha
 fica no detalhe do item/produto e usa permissoes `bom.*`; a producao recebe
 somente dados operacionais, busca componentes no banco, valida saldo disponivel
 e rejeita componentes enviados manualmente pelo frontend.
+A Fase 13 centraliza os templates transacionais de e-mail, adiciona layout HTML
+responsivo com identidade do Vertice, mantem texto simples como alternativa e
+preserva os fluxos existentes de convite e recuperacao de senha.
 
 ## Concluído nesta entrega
 
+- [x] Criar layout centralizado de e-mail com cabecalho, botao, bloco de
+  informacoes, aviso de seguranca e rodape.
+- [x] Converter convite de usuario e redefinicao de senha para templates HTML
+  com texto simples alternativo.
+- [x] Preparar templates padronizados para empresa criada, empresa suspensa,
+  empresa reativada, alerta de estoque e notificacao operacional.
+- [x] Enviar HTML pelo SMTP quando disponivel, mantendo `email_outbox.body`
+  como conteudo texto.
+- [x] Adicionar preview local em `/api/dev/email-preview` somente fora de
+  producao.
+- [x] Cobrir templates de e-mail com testes unitarios.
 - [x] Remover o fluxo operacional de filiais e depósitos.
 - [x] Manter `companies` apenas como raiz interna da instalação.
 - [x] Criar migration `20260623010000_single_company_rbac_stock_mvp`.

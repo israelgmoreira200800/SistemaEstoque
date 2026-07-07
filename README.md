@@ -78,6 +78,23 @@ SMTP_FROM="Vertice <no-reply@seudominio.com>"
 Sem SMTP configurado, as mensagens continuam registradas em `email_outbox` como
 pendentes para inspeção operacional.
 
+Os e-mails transacionais usam templates centralizados em `src/lib/email/templates.ts`.
+O corpo texto continua salvo em `email_outbox.body`; quando houver HTML, ele fica em
+`metadata.email.htmlBody` e e enviado pelo SMTP como alternativa visual. Em
+desenvolvimento, visualize os modelos em:
+
+```text
+/api/dev/email-preview?template=reset-password
+/api/dev/email-preview?template=invite-user
+/api/dev/email-preview?template=company-created
+/api/dev/email-preview?template=company-suspended
+/api/dev/email-preview?template=company-reactivated
+/api/dev/email-preview?template=stock-alert
+/api/dev/email-preview?template=operational-notification
+```
+
+A rota de preview retorna 404 em producao.
+
 Credenciais criadas pelo `.env` atual:
 
 - e-mail: `admin@exemplo.com`
