@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut } from "lucide-react";
 import type { AuthSession } from "@/lib/auth/session";
 import { logoutAction } from "@/app/dashboard/actions";
 import { AppSidebarNav, type SidebarNavItem } from "@/components/app-sidebar-nav";
+import { MobileSidebarDrawer } from "@/components/mobile-sidebar-drawer";
 
 const mainNavigation = [
   { href: "/dashboard", label: "Visão geral", icon: "gauge", permission: "dashboard.view" },
@@ -46,35 +47,13 @@ export function AppSidebar({ session }: { session: AuthSession }) {
         <span>Vertice</span>
       </Link>
 
-      <details className="mobile-sidebar-drawer">
-        <summary className="mobile-menu-button" aria-label="Abrir menu de navegacao">
-          <Menu className="mobile-menu-icon-open" size={21} aria-hidden="true" />
-          <X className="mobile-menu-icon-close" size={21} aria-hidden="true" />
-        </summary>
-        <div className="mobile-drawer-panel">
-          <div className="mobile-drawer-header">
-            <Link className="brand-lockup brand-lockup-light" href="/dashboard">
-              <span className="brand-mark"><Image src="/brand/vertice-mark.svg" alt="" width={36} height={36} /></span>
-              <span>Vertice</span>
-            </Link>
-            <span className="mobile-drawer-pill">Menu</span>
-          </div>
-          <div className="company-switcher mobile-company-switcher">
-            <span className="company-avatar">{session.company.name[0]?.toUpperCase()}</span>
-            <span><small>Operacao</small><strong>{session.company.name}</strong></span>
-          </div>
-          <AppSidebarNav items={visibleNavigation} />
-          <div className="sidebar-user mobile-sidebar-user">
-            <span className="user-avatar">{initials}</span>
-            <span className="user-copy"><strong>{session.user.name}</strong><small>{session.roles[0] ?? "Usuario"}</small></span>
-            <form action={logoutAction}>
-              <button className="icon-button" title="Sair" aria-label="Sair do sistema" type="submit">
-                <LogOut size={18} />
-              </button>
-            </form>
-          </div>
-        </div>
-      </details>
+      <MobileSidebarDrawer
+        companyName={session.company.name}
+        initials={initials}
+        items={visibleNavigation}
+        roleLabel={session.roles[0] ?? "Usuario"}
+        userName={session.user.name}
+      />
 
       <div className="company-switcher">
         <span className="company-avatar">{session.company.name[0]?.toUpperCase()}</span>

@@ -41,7 +41,7 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppSidebarNav({ items }: { items: SidebarNavItem[] }) {
+export function AppSidebarNav({ items, onNavigate }: { items: SidebarNavItem[]; onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -67,6 +67,7 @@ export function AppSidebarNav({ items }: { items: SidebarNavItem[] }) {
               aria-current={active ? "page" : undefined}
               style={{ "--nav-index": index } as React.CSSProperties}
               title={label}
+              onClick={onNavigate}
             >
               <span className="nav-active-rail" aria-hidden="true" />
               <Icon aria-hidden="true" size={19} />

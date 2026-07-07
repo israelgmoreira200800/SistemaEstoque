@@ -425,9 +425,6 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 .icon-button:hover:not(:disabled) { color: var(--ink); border-color: var(--line); background: #fff; }
 .sidebar-user .icon-button:hover { color: #fff; border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.07); }
 .mobile-sidebar-drawer { display: none; }
-.mobile-menu-button { list-style: none; }
-.mobile-menu-button::-webkit-details-marker { display: none; }
-.mobile-menu-icon-close { display: none; }
 .app-content {
   min-width: 0;
   max-width: 100%;
@@ -963,15 +960,14 @@ button:focus-visible, a:focus-visible, input:focus-visible {
     background: rgba(255,255,255,.08);
     cursor: pointer;
   }
-  .mobile-sidebar-drawer[open] .mobile-menu-icon-open { display: none; }
-  .mobile-sidebar-drawer[open] .mobile-menu-icon-close { display: block; }
-  .mobile-sidebar-drawer[open]::before {
-    content: "";
+  .mobile-drawer-overlay {
     position: fixed;
     inset: 0;
     z-index: 125;
+    border: 0;
     background: rgba(7, 21, 19, .48);
     backdrop-filter: blur(2px);
+    cursor: pointer;
   }
   .mobile-drawer-panel {
     position: fixed;
@@ -996,7 +992,19 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .mobile-drawer-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
   .mobile-drawer-header .brand-lockup { min-width: 0; }
   .mobile-drawer-header .brand-lockup > span:last-child { display: inline; color: #fff; }
-  .mobile-drawer-pill { padding: 6px 9px; border-radius: 999px; color: #99f6e4; background: rgba(45,212,191,.12); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+  .mobile-drawer-close {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 10px;
+    color: #dffdf8;
+    background: rgba(255,255,255,.08);
+    cursor: pointer;
+  }
+  .mobile-drawer-close:hover { background: rgba(255,255,255,.13); }
   .mobile-company-switcher { display: flex; padding: 12px; }
   .mobile-company-switcher > span:last-child { display: grid; }
   .mobile-drawer-panel .sidebar-nav { display: flex; flex: 1; padding: 4px 3px 8px; }

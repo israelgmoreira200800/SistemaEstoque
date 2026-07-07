@@ -51,6 +51,8 @@ preserva os fluxos existentes de convite e recuperacao de senha.
 A Fase 14 revisa a experiencia mobile com drawer de navegacao, ajustes globais
 de tabelas, formularios, cards, popovers e alvos de toque, preservando regras de
 negocio e o desktop.
+O drawer mobile tambem recebeu fechamento explicito por botao, overlay, clique
+em link, mudanca de rota e tecla Esc.
 A identificacao de autoria foi adicionada de forma discreta no login, layout
 principal, configuracoes, README e metadados do pacote.
 
@@ -58,6 +60,7 @@ principal, configuracoes, README e metadados do pacote.
 
 - [x] Adicionar identificacao profissional: Vértice 2026, desenvolvido por
   Israel Gomes Moreira.
+- [x] Corrigir fechamento do menu mobile por X, overlay, link, rota e Esc.
 - [x] Trocar a navegacao mobile truncada por drawer com empresa, usuario,
   atalhos completos e logout.
 - [x] Reforcar `app-shell`, `page-body`, cards, headers e popovers para evitar
