@@ -73,7 +73,12 @@ SMTP_SECURE="false"
 SMTP_USER="usuario"
 SMTP_PASSWORD="senha-ou-app-password"
 SMTP_FROM="Vertice <no-reply@seudominio.com>"
+SMTP_DELIVERY_TIMEOUT_MS="10000"
 ```
+
+`SMTP_DELIVERY_TIMEOUT_MS` limita quanto tempo uma action espera pelo provedor
+SMTP. Se o provedor nao responder, o e-mail fica marcado como `FAILED` no
+outbox em vez de deixar o formulario carregando indefinidamente.
 
 Sem SMTP configurado, as mensagens continuam registradas em `email_outbox` como
 pendentes para inspeção operacional.

@@ -21,6 +21,7 @@ const serverEnvSchema = z.object({
   SMTP_USER: z.string().trim().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().trim().optional(),
+  SMTP_DELIVERY_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(10000),
 });
 
 export function getServerEnv() {
@@ -37,5 +38,6 @@ export function getServerEnv() {
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     SMTP_FROM: process.env.SMTP_FROM,
+    SMTP_DELIVERY_TIMEOUT_MS: process.env.SMTP_DELIVERY_TIMEOUT_MS,
   });
 }
