@@ -51,6 +51,7 @@ export default async function PlatformLoginPage() {
             <p>Use sua conta de operador Vertice.</p>
           </div>
           <PlatformLoginForm />
+          <p className="authorship-note">V&eacute;rtice &copy; 2026 - Desenvolvido por Israel Gomes Moreira</p>
         </div>
       </section>
     </main>

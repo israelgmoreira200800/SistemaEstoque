@@ -6,7 +6,10 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   return (
     <div className="app-shell">
       <AppSidebar session={session} />
-      <div className="app-content">{children}</div>
+      <div className="app-content">
+        {children}
+        <footer className="app-footer">V&eacute;rtice &copy; 2026 - Desenvolvido por Israel Gomes Moreira</footer>
+      </div>
     </div>
   );
 }

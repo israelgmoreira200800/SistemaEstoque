@@ -99,6 +99,17 @@ export default async function SettingsPage() {
             </div>
             <Link className="table-action" href="/dashboard/historico">Ver histórico completo</Link>
           </article>
+
+          <article className="content-card settings-panel">
+            <div className="card-heading"><div><span className="eyebrow">Sobre</span><h3>V&eacute;rtice</h3></div></div>
+            <div className="about-system-box">
+              <ShieldCheck size={18} />
+              <div>
+                <strong>V&eacute;rtice &copy; 2026</strong>
+                <small>Desenvolvido por Israel Gomes Moreira</small>
+              </div>
+            </div>
+          </article>
         </section>
 
         <section className="settings-shortcuts">

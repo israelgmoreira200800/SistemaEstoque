@@ -4,7 +4,7 @@
 
 ## Estado geral
 
-Fase atual: **Fase 13 - Templates profissionais de e-mail (concluida)**.
+Fase atual: **Fase 14 - Revisao mobile e responsividade (concluida)**.
 
 O sistema foi refatorado para uso em uma única empresa, sem módulo de filiais. A
 complexidade de filial/depósito saiu da experiência e do modelo operacional. O MVP
@@ -48,9 +48,27 @@ e rejeita componentes enviados manualmente pelo frontend.
 A Fase 13 centraliza os templates transacionais de e-mail, adiciona layout HTML
 responsivo com identidade do Vertice, mantem texto simples como alternativa e
 preserva os fluxos existentes de convite e recuperacao de senha.
+A Fase 14 revisa a experiencia mobile com drawer de navegacao, ajustes globais
+de tabelas, formularios, cards, popovers e alvos de toque, preservando regras de
+negocio e o desktop.
+A identificacao de autoria foi adicionada de forma discreta no login, layout
+principal, configuracoes, README e metadados do pacote.
 
 ## Concluído nesta entrega
 
+- [x] Adicionar identificacao profissional: Vértice 2026, desenvolvido por
+  Israel Gomes Moreira.
+- [x] Trocar a navegacao mobile truncada por drawer com empresa, usuario,
+  atalhos completos e logout.
+- [x] Reforcar `app-shell`, `page-body`, cards, headers e popovers para evitar
+  scroll horizontal global.
+- [x] Melhorar tabelas responsivas em cards no mobile, mantendo scroll interno
+  apenas quando necessario.
+- [x] Ajustar formularios, botoes e acoes compactas para toque confortavel em
+  360px a 430px.
+- [x] Validar via Chrome headless larguras 1440, 1280, 1024, 768, 430, 412,
+  390 e 360px em login, recuperacao, dashboard, itens, usuarios, cadastros,
+  pedidos, producao e login da plataforma.
 - [x] Criar layout centralizado de e-mail com cabecalho, botao, bloco de
   informacoes, aviso de seguranca e rodape.
 - [x] Converter convite de usuario e redefinicao de senha para templates HTML

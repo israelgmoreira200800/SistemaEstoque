@@ -45,6 +45,7 @@ export default async function LoginPage() {
           </div>
           <LoginForm />
           <p className="login-support">Problemas para entrar? Fale com o administrador da sua empresa.</p>
+          <p className="authorship-note">V&eacute;rtice &copy; 2026 - Desenvolvido por Israel Gomes Moreira</p>
         </div>
       </section>
     </main>

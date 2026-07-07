@@ -5,6 +5,8 @@ SaaS multiempresa. Cada cliente representa uma empresa independente, sem filiais
 no escopo atual, com estoque principal unico e organizacao interna por usuarios,
 setores, cargos e permissoes.
 
+Vértice (c) 2026 - Desenvolvido por Israel Gomes Moreira.
+
 O ambiente empresarial atual segue operacional. A base SaaS ja possui status de
 empresa, trial, plano manual, assinaturas, limites, operadores da plataforma,
 auditoria da plataforma, login separado em `/platform/login`, painel minimo em
@@ -117,6 +119,18 @@ pnpm exec prisma migrate status
 ```
 
 O endpoint `GET /api/health` verifica aplicação e conexão com o banco.
+
+## Responsividade
+
+A interface usa ajustes centralizados em `src/app/globals.css` para preservar o
+desktop e melhorar o mobile. No celular, a navegacao do dashboard vira um drawer
+com empresa, usuario, links completos e logout; tabelas usam cards responsivos
+para evitar scroll horizontal global.
+
+Ao revisar telas, confira principalmente as larguras `1440`, `1280`, `1024`,
+`768`, `430`, `412`, `390` e `360px`. O `body`, `main`, `app-shell`,
+`app-content` e `page-body` nao devem estourar a largura da viewport; se uma
+tabela muito grande precisar rolar, o scroll deve ficar dentro de `.data-table`.
 
 ## Perfis iniciais
 

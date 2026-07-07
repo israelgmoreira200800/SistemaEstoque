@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Controle de estoque, pedidos, producao e permissoes para empresa unica.",
+  "author": "Israel Gomes Moreira",
   "packageManager": "pnpm@11.7.0",
   "engines": {
     "node": ">=22.12.0"
